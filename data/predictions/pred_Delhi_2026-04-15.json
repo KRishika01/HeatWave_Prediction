@@ -1,0 +1,30 @@
+{
+  "city": "Delhi",
+  "date": "2026-04-15",
+  "risk_level": 1,
+  "risk_label": "Moderate",
+  "emoji": "\ud83d\udfe1",
+  "composite_score": 31.5,
+  "confidence": 99.9,
+  "probabilities": {
+    "Low": 0.1,
+    "Moderate": 99.9,
+    "High": 0.0,
+    "Severe": 0.0
+  },
+  "heat_index": 46.3,
+  "humidex": 31.4,
+  "consec_hot_days": 40,
+  "active_compounds": [],
+  "advisory": "Moderate heat. Stay hydrated. Avoid peak sun (12\u20134 PM). Monitor elderly & children.",
+  "raw_obs": {
+    "date": "2026-04-15",
+    "temp_max": 37.0,
+    "temp_min": 22.4,
+    "humidity": 51,
+    "wind": 10.2,
+    "rainfall": 0,
+    "aqi": 254.0
+  },
+  "aqi_source": "Open-Meteo AQ (free)"
+}

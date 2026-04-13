@@ -1,80 +1,80 @@
 {
   "all": {
     "LogisticRegression": {
-      "Accuracy": 0.9558,
-      "Macro F1": 0.8978,
-      "Weighted F1": 0.9576,
-      "ROC-AUC": 0.9971
+      "Accuracy": 0.9497,
+      "Macro F1": 0.8798,
+      "Weighted F1": 0.9518,
+      "ROC-AUC": 0.9964
     },
     "RandomForest": {
-      "Accuracy": 0.9868,
-      "Macro F1": 0.9755,
-      "Weighted F1": 0.9869,
-      "ROC-AUC": 0.9998
+      "Accuracy": 0.9893,
+      "Macro F1": 0.9783,
+      "Weighted F1": 0.9894,
+      "ROC-AUC": 0.9997
     },
     "XGBoost": {
-      "Accuracy": 0.9929,
-      "Macro F1": 0.9754,
-      "Weighted F1": 0.9928,
+      "Accuracy": 0.9934,
+      "Macro F1": 0.9792,
+      "Weighted F1": 0.9934,
       "ROC-AUC": 0.9998
     },
     "LightGBM": {
-      "Accuracy": 0.9944,
-      "Macro F1": 0.9812,
-      "Weighted F1": 0.9944,
-      "ROC-AUC": 0.9998
+      "Accuracy": 0.9924,
+      "Macro F1": 0.9756,
+      "Weighted F1": 0.9924,
+      "ROC-AUC": 0.9997
     },
     "Ensemble": {
-      "Accuracy": 0.9944,
-      "Macro F1": 0.9834,
-      "Weighted F1": 0.9944,
-      "ROC-AUC": 0.9999
+      "Accuracy": 0.9949,
+      "Macro F1": 0.9843,
+      "Weighted F1": 0.9949,
+      "ROC-AUC": 0.9998
     }
   },
   "Delhi": {
     "LogisticRegression": {
-      "Accuracy": 0.9406,
-      "Macro F1": 0.896,
-      "Weighted F1": 0.9417,
-      "ROC-AUC": 0.9928
+      "Accuracy": 0.9391,
+      "Macro F1": 0.8906,
+      "Weighted F1": 0.941,
+      "ROC-AUC": 0.9934
     },
     "RandomForest": {
-      "Accuracy": 0.9817,
-      "Macro F1": 0.9804,
-      "Weighted F1": 0.9817,
-      "ROC-AUC": 0.9994
+      "Accuracy": 0.9909,
+      "Macro F1": 0.9901,
+      "Weighted F1": 0.9909,
+      "ROC-AUC": 0.9999
     },
     "XGBoost": {
-      "Accuracy": 0.9863,
-      "Macro F1": 0.9842,
-      "Weighted F1": 0.9863,
-      "ROC-AUC": 0.9996
+      "Accuracy": 0.9939,
+      "Macro F1": 0.991,
+      "Weighted F1": 0.9939,
+      "ROC-AUC": 0.9999
     },
     "LightGBM": {
-      "Accuracy": 0.9817,
-      "Macro F1": 0.9569,
-      "Weighted F1": 0.9815,
-      "ROC-AUC": 0.9995
+      "Accuracy": 0.9863,
+      "Macro F1": 0.9628,
+      "Weighted F1": 0.9861,
+      "ROC-AUC": 0.9996
     },
     "Ensemble": {
-      "Accuracy": 0.9833,
-      "Macro F1": 0.9708,
-      "Weighted F1": 0.9832,
-      "ROC-AUC": 0.9996
+      "Accuracy": 0.9939,
+      "Macro F1": 0.9879,
+      "Weighted F1": 0.9939,
+      "ROC-AUC": 0.9998
     }
   },
   "Hyderabad": {
     "LogisticRegression": {
-      "Accuracy": 0.9604,
-      "Macro F1": 0.937,
-      "Weighted F1": 0.9616,
+      "Accuracy": 0.9619,
+      "Macro F1": 0.9389,
+      "Weighted F1": 0.963,
       "ROC-AUC": 0.9959
     },
     "RandomForest": {
-      "Accuracy": 0.9939,
-      "Macro F1": 0.9888,
-      "Weighted F1": 0.9939,
-      "ROC-AUC": 0.9998
+      "Accuracy": 0.9924,
+      "Macro F1": 0.9867,
+      "Weighted F1": 0.9924,
+      "ROC-AUC": 0.9997
     },
     "XGBoost": {
       "Accuracy": 0.997,
@@ -97,34 +97,34 @@
   },
   "Nagpur": {
     "LogisticRegression": {
-      "Accuracy": 0.9498,
-      "Macro F1": 0.9007,
-      "Weighted F1": 0.9517,
-      "ROC-AUC": 0.9961
+      "Accuracy": 0.9513,
+      "Macro F1": 0.9023,
+      "Weighted F1": 0.9531,
+      "ROC-AUC": 0.9962
     },
     "RandomForest": {
-      "Accuracy": 0.9696,
-      "Macro F1": 0.9492,
-      "Weighted F1": 0.9695,
-      "ROC-AUC": 0.9978
+      "Accuracy": 0.9711,
+      "Macro F1": 0.9511,
+      "Weighted F1": 0.9709,
+      "ROC-AUC": 0.9979
     },
     "XGBoost": {
-      "Accuracy": 0.9817,
-      "Macro F1": 0.9663,
-      "Weighted F1": 0.9817,
-      "ROC-AUC": 0.9982
+      "Accuracy": 0.9833,
+      "Macro F1": 0.9686,
+      "Weighted F1": 0.9832,
+      "ROC-AUC": 0.9983
     },
     "LightGBM": {
-      "Accuracy": 0.9863,
-      "Macro F1": 0.9727,
-      "Weighted F1": 0.9862,
-      "ROC-AUC": 0.9984
+      "Accuracy": 0.9878,
+      "Macro F1": 0.9749,
+      "Weighted F1": 0.9878,
+      "ROC-AUC": 0.9986
     },
     "Ensemble": {
       "Accuracy": 0.9833,
       "Macro F1": 0.9684,
       "Weighted F1": 0.9831,
-      "ROC-AUC": 0.9985
+      "ROC-AUC": 0.9987
     }
   }
 }

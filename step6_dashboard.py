@@ -4109,11 +4109,15 @@ def build_features(history_df: pd.DataFrame, today_obs: dict) -> pd.Series:
     hot = (df["temp_max"]>=40.0).astype(int)
     df["consec_hot_days"] = hot.groupby((hot!=hot.shift()).cumsum()).cumcount()+hot
 
-    df["compound_heat_aqi"]      = ((df["temp_max"]>=38)&(df["aqi"]>=200)).astype(int)
-    df["compound_heat_drought"]  = ((df["temp_max"]>=38)&(df["drought_flag"]==1)).astype(int)
-    df["compound_heat_humidity"] = ((df["temp_max"]>=38)&(df["humidity"]>=60)).astype(int)
-    df["triple_compound"]        = ((df["temp_max"]>=38)&(df["aqi"]>=150)&
-                                    (df["drought_flag"]==1)).astype(int)
+    df["compound_heat_aqi"]           = ((df["temp_max"]>=38)&(df["aqi"]>=200)).astype(int)
+    df["compound_heat_humidity"]      = ((df["temp_max"]>=38)&(df["humidity"]>=60)).astype(int)
+    # Heat + Air Pollution: broader AQI>=150 (Moderately Polluted) threshold
+    df["compound_heat_air_pollution"] = ((df["temp_max"]>=38)&(df["aqi"]>=150)).astype(int)
+    # Triple: Heat + High AQI + High Humidity (all daily-observable, no drought)
+    df["triple_compound"]             = ((df["temp_max"]>=38)&(df["aqi"]>=150)&
+                                         (df["humidity"]>=60)).astype(int)
+    # Keep drought flag computed but only used as a feature for the model, not shown as compound
+    df["compound_heat_drought"]       = ((df["temp_max"]>=38)&(df["drought_flag"]==1)).astype(int)
     return df.iloc[-1]
 
 
@@ -4164,26 +4168,38 @@ def load_history_df():
         return None
     return pd.read_csv(p, parse_dates=["date"])
 
-def predict_for_city(city, today_obs):
-    """Loads rolling history, builds features, runs model, returns result dict."""
-    # Use per-city file — always has the latest data from step7b/step7
+def predict_for_city(city, today_obs, pred_date=None):
+    """
+    Loads rolling history BEFORE pred_date (or today), builds features,
+    runs the ML model, and returns a result dict.
+    pred_date: datetime.date or None (defaults to today)
+    """
     city_df = load_city_history(city)
     if city_df is None:
         return None, "No history data found. Run steps 1–2 first."
 
-    raw_cols = ["date","temp_max","temp_min","humidity","wind","rainfall","aqi"]
+    raw_cols  = ["date","temp_max","temp_min","humidity","wind","rainfall","aqi"]
     available = [c for c in raw_cols if c in city_df.columns]
-    history  = city_df[available].dropna().tail(40).copy()
+    city_df["date"] = pd.to_datetime(city_df["date"], errors="coerce")
 
-    # Verify the history is current — warn if rolling window is stale
-    history["date"] = pd.to_datetime(history["date"], errors="coerce")
+    # ── Use history strictly BEFORE the prediction date ──────────────────
+    if pred_date is None:
+        pred_date = date.today()
+    cutoff = pd.Timestamp(pred_date)
+    history_pool = city_df[city_df["date"] < cutoff]
+
+    if history_pool.empty:
+        # Fall back to all history if nothing before the date (e.g., very old date)
+        history_pool = city_df
+
+    history = history_pool[available].dropna().tail(40).copy()
+
+    # Warn if rolling window is stale relative to chosen date
     last_hist_date = history["date"].max().date()
-    yesterday      = (pd.Timestamp.today() - pd.Timedelta(days=1)).date()
-    if last_hist_date < yesterday - timedelta(days=7):
+    if last_hist_date < pred_date - timedelta(days=7):
         st.warning(
             f"⚠ **{city}**: Rolling history last date is **{last_hist_date}** "
-            f"(more than 7 days ago). Run **step7b_backfill.py** first for "
-            f"accurate lag/rolling features.",
+            f"(more than 7 days before {pred_date}). Rolling features may be approximate.",
             icon="🕐"
         )
 
@@ -4198,10 +4214,10 @@ def predict_for_city(city, today_obs):
     score    = float(reg.predict(X)[0]) if reg else None
 
     compounds = {
-        "Heat + AQI"     : int(enriched.get("compound_heat_aqi",0)),
-        "Heat + Drought" : int(enriched.get("compound_heat_drought",0)),
-        "Heat + Humidity": int(enriched.get("compound_heat_humidity",0)),
-        "Triple Compound": int(enriched.get("triple_compound",0)),
+        "Heat + AQI (Severe)": int(enriched.get("compound_heat_aqi",0)),
+        "Heat + Air Pollution": int(enriched.get("compound_heat_air_pollution",0)),
+        "Heat + Humidity"    : int(enriched.get("compound_heat_humidity",0)),
+        "Triple Compound"    : int(enriched.get("triple_compound",0)),
     }
     return {
         "city"           : city,
@@ -4261,9 +4277,8 @@ with st.sidebar:
     st.markdown("---")
 
     page = st.radio("Navigation", [
-        "🔴 Live Prediction",
-        "📅 7-Day Forecast",
-        "📆 Monthly Outlook",
+        "🔴 Live & 7-Day Forecast",
+        "📆 Monthly(Seasonal) Outlook",
         "🏠 Historical Overview",
         "📈 Trends & Analysis",
         "🔍 Manual Prediction",
@@ -4307,459 +4322,439 @@ else:
 # PAGE 1: LIVE PREDICTION
 # ════════════════════════════════════════════════════════════════════════
 if "Live" in page:
-    st.markdown("## 🔴 Live Prediction <span class='live-badge'>LIVE</span>",
-                unsafe_allow_html=True)
-    st.caption("Fetches real weather & AQ data, runs ML model using your historical data as context.")
-
-    # Controls
-    c1, c2, c3 = st.columns([2,2,3])
-    with c1:
-        live_cities = st.multiselect("Cities to predict",
-                                     CITIES, default=CITIES)
-    with c2:
-        predict_day = st.radio("Predict for", ["Today","Tomorrow"],
-                               horizontal=True)
-    with c3:
-        st.markdown("<br>",unsafe_allow_html=True)
-        fetch_btn = st.button("🌐 Fetch Live Data & Predict",
-                              type="primary", use_container_width=True)
-
+    st.title("🔴 Live & 7-Day Forecas")
+    pred_mode = st.radio("Select Prediction Mode", ["Live Prediction (Today/Tomorrow)", "7-Day Forecast"], horizontal=True)
     st.markdown("---")
+    if "Live Prediction" in pred_mode:
+        st.markdown("## 🔴 Live Prediction <span class='live-badge'>LIVE</span>",
+                    unsafe_allow_html=True)
+        st.caption("Fetches real weather & AQ data, runs ML model using your historical data as context.")
 
-    # ── Data source diagnostics ────────────────────────────────────────
-    with st.expander("🔍 Diagnose: which data files are being used", expanded=False):
-        for city in CITIES:
-            for fname in [f"labelled_{city}.csv", f"processed_{city}.csv"]:
-                p = os.path.join(PROC_DIR, fname)
-                if os.path.exists(p):
-                    df_check = pd.read_csv(p, parse_dates=["date"])
-                    df_check["date"] = pd.to_datetime(df_check["date"], errors="coerce")
-                    last_d   = df_check["date"].max().date()
-                    st.write(f"**{city}** → `{fname}` "
-                             f"| last date: `{last_d}` "
-                             f"| rows: `{len(df_check)}`")
-                    break
-            else:
-                st.write(f"**{city}** → ⚠ no labelled/processed CSV found")
-        model_path = os.path.join(MODEL_DIR, "classifier_all.pkl")
-        if os.path.exists(model_path):
-            mtime = pd.Timestamp(os.path.getmtime(model_path), unit="s")
-            st.write(f"**Model** → `classifier_all.pkl` last modified: `{mtime.strftime('%Y-%m-%d %H:%M')}`")
-
-    # ── Run on button click ────────────────────────────────────────────
-    if fetch_btn:
-        target = (date.today()+timedelta(days=1)
-                  if predict_day=="Tomorrow" else date.today())
-
-        st.session_state["live_results"]   = {}
-        st.session_state["live_target"]    = str(target)
-        st.session_state["live_timestamp"] = datetime.now().strftime("%d %b %Y %H:%M")
-
-        prog = st.progress(0, text="Starting fetch...")
-        for idx, city in enumerate(live_cities):
-            prog.progress((idx+0.1)/len(live_cities),
-                          text=f"Fetching weather for {city}...")
-            cfg = CITY_CONFIG[city]
-
-            # 1. Weather
-            weather, werr = fetch_weather(cfg["lat"], cfg["lon"], target)
-            if weather is None:
-                st.session_state["live_results"][city] = {
-                    "error": f"Weather fetch failed: {werr}"}
-                continue
-
-            # 2. AQI
-            prog.progress((idx+0.5)/len(live_cities),
-                          text=f"Fetching AQI for {city}...")
-            aqi_val, aqi_src = get_aqi(cfg["lat"], cfg["lon"],
-                                        cfg["aqicn"], target,
-                                        owm_key, aqicn_tok)
-            if aqi_val is None:
-                # fallback: 7-day avg from history
-                if df_all is not None:
-                    hist_c = df_all[df_all["city"]==city]
-                    aqi_val = float(hist_c["aqi"].tail(7).mean())
-                    aqi_src = "7-day historical avg"
-                else:
-                    aqi_val = 120
-                    aqi_src = "default fallback"
-
-            today_obs = {**weather, "aqi": round(float(aqi_val), 0)}
-
-            # 3. Predict
-            prog.progress((idx+0.8)/len(live_cities),
-                          text=f"Running prediction for {city}...")
-            result, err = predict_for_city(city, today_obs)
-            if err:
-                st.session_state["live_results"][city] = {"error": err}
-                continue
-
-            result["aqi_source"] = aqi_src
-            st.session_state["live_results"][city] = result
-            save_prediction_log(result)
-            if predict_day == "Today":
-                append_to_history(city, today_obs)
-
-        prog.progress(1.0, text="Done!")
-        load_all_data.clear()   # refresh historical cache with new data
-
-    # ── Display results ────────────────────────────────────────────────
-    if "live_results" in st.session_state and st.session_state["live_results"]:
-        results = st.session_state["live_results"]
-        ts      = st.session_state.get("live_timestamp","")
-        target_str = st.session_state.get("live_target","")
-
-        st.caption(f"Last fetched: **{ts}**  |  Prediction for: **{target_str}**")
-
-        # ── Risk cards ───────────────────────────────────────────────
-        cols = st.columns(len(results))
-        for col, (city, res) in zip(cols, results.items()):
-            if "error" in res:
-                col.error(f"**{city}**: {res['error']}")
-                continue
-            risk  = res["risk_label"]
-            emoji = res["emoji"]
-            col.markdown(f"""
-            <div class="risk-card risk-{risk.upper()}">
-              <div style="font-size:1.3rem;font-weight:700">{city}</div>
-              <div style="font-size:3rem">{emoji}</div>
-              <div class="metric-big">{risk}</div>
-              <div class="metric-sub">Score: {res['composite_score']} / 100</div>
-              <div class="metric-sub">Confidence: {res['confidence']}%</div>
-              <hr style="margin:8px 0">
-              <div>🌡 Tmax: <b>{res['raw_obs']['temp_max']}°C</b></div>
-              <div>🥵 Heat Index: <b>{res['heat_index']}°C</b></div>
-              <div>💧 Humidity: <b>{res['raw_obs']['humidity']}%</b></div>
-              <div>💨 AQI: <b>{res['raw_obs']['aqi']:.0f}</b></div>
-              <div>🌧 Rain: <b>{res['raw_obs']['rainfall']} mm</b></div>
-              <div>🔥 Consec Hot Days: <b>{res['consec_hot_days']}</b></div>
-              <div style="margin-top:6px">
-                <span class="source-tag">AQI: {res.get('aqi_source','API')}</span>
-              </div>
-            </div>""", unsafe_allow_html=True)
+        # Controls
+        c1, c2, c3 = st.columns([2,2,3])
+        with c1:
+            live_cities = st.multiselect("Cities to predict",
+                                         CITIES, default=CITIES)
+        with c2:
+            predict_day = st.radio("Predict for", ["Today","Tomorrow"],
+                                   horizontal=True)
+        with c3:
+            st.markdown("<br>",unsafe_allow_html=True)
+            fetch_btn = st.button("🌐 Fetch Live Data & Predict",
+                                  type="primary", use_container_width=True)
 
         st.markdown("---")
 
-        # ── Detailed panels per city ─────────────────────────────────
-        valid = {c:r for c,r in results.items() if "error" not in r}
-        if not valid: st.stop()
-
-        tabs = st.tabs([f"{r['emoji']} {c}" for c,r in valid.items()])
-        for tab, (city, res) in zip(tabs, valid.items()):
-            with tab:
-                a1, a2 = st.columns([1,1])
-
-                with a1:
-                    # Probability bar chart
-                    probs = res["probabilities"]
-                    fig = go.Figure(go.Bar(
-                        x=list(probs.values()),
-                        y=list(probs.keys()),
-                        orientation="h",
-                        marker_color=[RISK_COLORS[i] for i in range(4)],
-                        text=[f"{v:.1f}%" for v in probs.values()],
-                        textposition="outside",
-                    ))
-                    fig.update_layout(
-                        title="Class Probabilities",
-                        xaxis=dict(range=[0,105], title="%"),
-                        height=220, margin=dict(l=10,r=10,t=40,b=10),
-                        showlegend=False,
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-
-                with a2:
-                    # Pillar radar
-                    obs = res["raw_obs"]
-                    def _s(x,bps):
-                        for lo,hi,ilo,ihi in bps:
-                            if lo<=x<=hi: return round(((ihi-ilo)/(hi-lo))*(x-lo)+ilo,1)
-                        return 100.0
-                    hi_val = _heat_index(obs["temp_max"], obs["humidity"])
-                    st_t = 0 if obs["temp_max"]<35 else 25 if obs["temp_max"]<38 else 50 if obs["temp_max"]<40 else 75 if obs["temp_max"]<45 else 100
-                    st_h = _s(hi_val, [(0,27,0,0),(27,32,0,25),(32,41,25,50),(41,54,50,75),(54,100,75,100)])
-                    st_a = _s(obs["aqi"], [(0,50,0,0),(50,100,0,15),(100,200,15,40),(200,300,40,60),(300,400,60,80),(400,500,80,100)])
-                    st_d = 40 if obs["rainfall"]<1 else 0
-                    st_c = min(100, (int(obs["temp_max"]>=38 and obs["aqi"]>=200)*30 +
-                                     int(obs["temp_max"]>=38 and obs["rainfall"]<1)*25 +
-                                     int(obs["temp_max"]>=38 and obs["humidity"]>=60)*20))
-                    rc   = RISK_COLORS[res["risk_level"]]
-                    fig  = go.Figure(go.Scatterpolar(
-                        r=[st_t,st_h,st_a,st_d,st_c],
-                        theta=["Temperature","Heat Index","AQI","Drought","Compound"],
-                        fill="toself",
-                        fillcolor = 'rgba(241, 196, 15, 0.27)',
-                        line_color=rc,
-                    ))
-                    fig.update_layout(
-                        title="Pillar Breakdown",
-                        polar=dict(radialaxis=dict(range=[0,100],tickfont_size=9)),
-                        height=220, margin=dict(l=10,r=10,t=40,b=10),
-                        showlegend=False,
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-
-                # Advisory
-                st.markdown(f"""<div class="advisory-box">
-                  <b>Advisory:</b> {res['advisory']}
-                </div>""", unsafe_allow_html=True)
-
-                # Compound flags
-                if res["active_compounds"]:
-                    st.warning("⚠ Active Compound Risks: " +
-                               " | ".join(res["active_compounds"]))
-
-                # Context from history
-                if df_all is not None:
-                    st.markdown("**Historical context — last 14 days:**")
-                    hist14 = (df_all[df_all["city"]==city]
-                              .tail(14)[["date","temp_max","aqi","risk_label","composite_score"]]
-                              .copy())
-                    hist14["date"] = hist14["date"].dt.strftime("%d %b")
-                    hist14.columns = ["Date","Tmax°C","AQI","Risk","Score"]
-                    st.dataframe(hist14.set_index("Date"), use_container_width=True)
-
-    else:
-        st.info("👆 Click **Fetch Live Data & Predict** to run today's or tomorrow's prediction.")
-        st.markdown("""
-        **What happens when you click:**
-        1. Fetches weather (temp, humidity, wind, rain) from Open-Meteo — no key needed
-        2. Fetches PM2.5/PM10 from Open-Meteo Air Quality → converts to India CPCB AQI
-        3. Loads last 30–40 days from your historical CSV as rolling context
-        4. Engineers all 35+ features using today's data + history
-        5. Runs your trained ML model → risk level, score, confidence
-        6. Saves prediction to `data/predictions/` log
-        """)
 
 
-# ════════════════════════════════════════════════════════════════════════
-# PAGE 2: HISTORICAL OVERVIEW
-# ════════════════════════════════════════════════════════════════════════
-elif "7-Day" in page:
-    st.title("📅 7-Day Heatwave Forecast")
-    st.caption(
-        "Chained ML forecast using Open-Meteo 16-day weather + 5-day AQ. "
-        "Confidence decays each day forward — see reliability label.")
+        # ── Run on button click ────────────────────────────────────────────
+        if fetch_btn:
+            target = (date.today()+timedelta(days=1)
+                      if predict_day=="Tomorrow" else date.today())
 
-    # ── Controls ──────────────────────────────────────────────────────
-    fc1, fc2, fc3 = st.columns([2, 2, 3])
-    with fc1:
-        fc_cities = st.multiselect("Cities", CITIES, default=CITIES, key="fc_cities")
-    with fc2:
-        n_days = st.slider("Days ahead", 1, 16, 7, key="fc_days")
-    with fc3:
-        st.markdown("<br>", unsafe_allow_html=True)
-        run_fc = st.button("🔮 Run Forecast", type="primary",
-                           use_container_width=True, key="fc_btn")
+            st.session_state["live_results"]   = {}
+            st.session_state["live_target"]    = str(target)
+            st.session_state["live_timestamp"] = datetime.now().strftime("%d %b %Y %H:%M")
 
-    # Reliability legend
-    st.markdown(
-        "> **Reliability:** "
-        "🟦 **High** (days 1–2) &nbsp;|&nbsp; "
-        "🟨 **Medium** (days 3–4) &nbsp;|&nbsp; "
-        "🟧 **Low** (days 5–7) &nbsp;|&nbsp; "
-        "⬜ **Indicative** (days 8+)"
-    )
-    st.markdown("---")
+            prog = st.progress(0, text="Starting fetch...")
+            for idx, city in enumerate(live_cities):
+                prog.progress((idx+0.1)/len(live_cities),
+                              text=f"Fetching weather for {city}...")
+                cfg = CITY_CONFIG[city]
 
-    if run_fc:
-        # ── import the forecast engine ─────────────────────────────
-        import importlib.util, sys
-        spec = importlib.util.spec_from_file_location(
-            "step7c", os.path.join(os.path.dirname(__file__),
-                                    "step7c_multiday_forecast.py"))
-        if spec is None:
-            st.error("step7c_multiday_forecast.py not found in the same folder.")
-            st.stop()
-        mod = importlib.util.module_from_spec(spec)
-        sys.modules["step7c"] = mod
-        spec.loader.exec_module(mod)
+                # 1. Weather
+                weather, werr = fetch_weather(cfg["lat"], cfg["lon"], target)
+                if weather is None:
+                    st.session_state["live_results"][city] = {
+                        "error": f"Weather fetch failed: {werr}"}
+                    continue
 
-        all_fc = {}
-        prog   = st.progress(0, text="Starting forecast...")
-        for idx, city in enumerate(fc_cities):
-            prog.progress((idx + 0.3) / len(fc_cities),
-                          text=f"Forecasting {city}...")
-            fc = mod.forecast_city(city, n_days=n_days)
-            all_fc[city] = fc
-            prog.progress((idx + 1) / len(fc_cities),
-                          text=f"{city} done")
+                # 2. AQI
+                prog.progress((idx+0.5)/len(live_cities),
+                              text=f"Fetching AQI for {city}...")
+                aqi_val, aqi_src = get_aqi(cfg["lat"], cfg["lon"],
+                                            cfg["aqicn"], target,
+                                            owm_key, aqicn_tok)
+                if aqi_val is None:
+                    # fallback: 7-day avg from history
+                    if df_all is not None:
+                        hist_c = df_all[df_all["city"]==city]
+                        aqi_val = float(hist_c["aqi"].tail(7).mean())
+                        aqi_src = "7-day historical avg"
+                    else:
+                        aqi_val = 120
+                        aqi_src = "default fallback"
 
-        prog.progress(1.0, text="Complete!")
-        st.session_state["fc_results"] = all_fc
-        st.session_state["fc_n_days"]  = n_days
+                today_obs = {**weather, "aqi": round(float(aqi_val), 0)}
 
-    # ── Display results ─────────────────────────────────────────────
-    if "fc_results" in st.session_state and st.session_state["fc_results"]:
-        all_fc = st.session_state["fc_results"]
-        n      = st.session_state.get("fc_n_days", 7)
+                # 3. Predict
+                prog.progress((idx+0.8)/len(live_cities),
+                              text=f"Running prediction for {city}...")
+                result, err = predict_for_city(city, today_obs)
+                if err:
+                    st.session_state["live_results"][city] = {"error": err}
+                    continue
 
-        RELIABILITY_COLORS = {
-            "High"       : "#2ECC71",
-            "Medium"     : "#F1C40F",
-            "Low"        : "#E67E22",
-            "Indicative" : "#BDC3C7",
-        }
+                result["aqi_source"] = aqi_src
+                st.session_state["live_results"][city] = result
+                save_prediction_log(result)
+                if predict_day == "Today":
+                    append_to_history(city, today_obs)
 
-        for city, fc_list in all_fc.items():
-            if not fc_list:
-                st.error(f"{city}: forecast failed.")
-                continue
+            prog.progress(1.0, text="Done!")
+            load_all_data.clear()   # refresh historical cache with new data
 
-            st.subheader(f"📍 {city}")
+        # ── Display results ────────────────────────────────────────────────
+        if "live_results" in st.session_state and st.session_state["live_results"]:
+            results = st.session_state["live_results"]
+            ts      = st.session_state.get("live_timestamp","")
+            target_str = st.session_state.get("live_target","")
 
-            # ── Risk card strip ──────────────────────────────────
-            card_cols = st.columns(min(len(fc_list), 8))
-            for col, day in zip(card_cols, fc_list[:8]):
-                risk  = day["risk_label"]
-                bg    = {"Low":"#d5f5e3","Moderate":"#fef9e7",
-                          "High":"#fdebd0","Severe":"#fadbd8"}.get(risk,"#f0f0f0")
-                rel_c = RELIABILITY_COLORS.get(day["reliability"], "#ccc")
+            st.caption(f"Last fetched: **{ts}**  |  Prediction for: **{target_str}**")
+
+            # ── Risk cards ───────────────────────────────────────────────
+            cols = st.columns(len(results))
+            for col, (city, res) in zip(cols, results.items()):
+                if "error" in res:
+                    col.error(f"**{city}**: {res['error']}")
+                    continue
+                risk  = res["risk_label"]
+                emoji = res["emoji"]
                 col.markdown(f"""
-                <div style="background:{bg};border:2px solid {rel_c};
-                  border-radius:10px;padding:8px;text-align:center;font-size:0.8rem">
-                  <div style="font-size:0.7rem;color:#888">{day["date"][5:]}</div>
-                  <div style="font-size:1.6rem">{day["emoji"]}</div>
-                  <div style="font-weight:700;font-size:0.8rem">{risk}</div>
-                  <div style="font-size:0.7rem">{day["adj_confidence"]:.0f}%</div>
-                  <div style="font-size:0.7rem">🌡{day["temp_max"]}°C</div>
+                <div class="risk-card risk-{risk.upper()}">
+                  <div style="font-size:1.3rem;font-weight:700">{city}</div>
+                  <div style="font-size:3rem">{emoji}</div>
+                  <div class="metric-big">{risk}</div>
+                  <div class="metric-sub">Score: {res['composite_score']} / 100</div>
+                  <div class="metric-sub">Confidence: {res['confidence']}%</div>
+                  <hr style="margin:8px 0">
+                  <div>🌡 Tmax: <b>{res['raw_obs']['temp_max']}°C</b></div>
+                  <div>🥵 Heat Index: <b>{res['heat_index']}°C</b></div>
+                  <div>💧 Humidity: <b>{res['raw_obs']['humidity']}%</b></div>
+                  <div>💨 AQI: <b>{res['raw_obs']['aqi']:.0f}</b></div>
+                  <div>🌧 Rain: <b>{res['raw_obs']['rainfall']} mm</b></div>
+                  <div>🔥 Consec Hot Days: <b>{res['consec_hot_days']}</b></div>
+                  <div style="margin-top:6px">
+                    <span class="source-tag">AQI: {res.get('aqi_source','API')}</span>
+                  </div>
                 </div>""", unsafe_allow_html=True)
 
-            # ── Charts ───────────────────────────────────────────
-            fc_df = pd.DataFrame(fc_list)
-            fc_df["date"] = pd.to_datetime(fc_df["date"])
-
-            ch1, ch2 = st.columns(2)
-
-            with ch1:
-                # Composite score + confidence band
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(
-                    x=fc_df["date"], y=fc_df["composite_score"],
-                    name="Risk Score",
-                    line=dict(color=CITY_COLORS.get(city,"#3498DB"), width=2),
-                    mode="lines+markers",
-                ))
-                # Confidence band: score ± (1-decay)*score
-                fc_df["upper"] = fc_df["composite_score"] * (
-                    1 + (1 - fc_df["decay_factor"]) * 0.5)
-                fc_df["lower"] = fc_df["composite_score"] * (
-                    1 - (1 - fc_df["decay_factor"]) * 0.5)
-                # fig.add_trace(go.Scatter(
-                #     x=pd.concat([fc_df["date"], fc_df["date"][::-1]]),
-                #     y=pd.concat([fc_df["upper"], fc_df["lower"][::-1]]),
-                #     fill="toself",
-                #     fillcolor=CITY_COLORS.get(city,"#3498DB") + "22",
-                #     line=dict(color="rgba(0,0,0,0)"),
-                #     name="Uncertainty band",
-                # ))
-                hex_color = CITY_COLORS.get(city, "#3498DB").lstrip("#")
-                r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-                fill_col = f"rgba({r}, {g}, {b}, 0.13)"
-
-                fig.add_trace(go.Scatter(
-                    x=pd.concat([fc_df["date"], fc_df["date"][::-1]]),
-                    y=pd.concat([fc_df["upper"], fc_df["lower"][::-1]]),
-                    fill="toself",
-                    fillcolor=fill_col,
-                    line=dict(color="rgba(0,0,0,0)"),
-                    name="Uncertainty band",
-                ))
-
-                fig.add_hline(y=50, line_dash="dot",
-                              line_color="orange", annotation_text="High (50)")
-                fig.add_hline(y=75, line_dash="dot",
-                              line_color="red", annotation_text="Severe (75)")
-                fig.update_layout(
-                    title="Composite Risk Score + Uncertainty",
-                    height=300, margin=dict(l=0,r=0,t=40,b=0),
-                    legend=dict(orientation="h", y=-0.3),
-                )
-                st.plotly_chart(fig, use_container_width=True)
-
-            with ch2:
-                # Temperature + AQI dual axis
-                fig2 = make_subplots(specs=[[{"secondary_y": True}]])
-                fig2.add_trace(go.Bar(
-                    x=fc_df["date"], y=fc_df["temp_max"],
-                    name="Tmax (°C)",
-                    marker_color=[RISK_COLORS[r] for r in fc_df["risk_level"]],
-                    opacity=0.8,
-                ), secondary_y=False)
-                fig2.add_trace(go.Scatter(
-                    x=fc_df["date"], y=fc_df["aqi"],
-                    name="AQI",
-                    line=dict(color="#8E44AD", width=2, dash="dot"),
-                    mode="lines+markers",
-                ), secondary_y=True)
-                fig2.update_yaxes(title_text="Tmax (°C)", secondary_y=False)
-                fig2.update_yaxes(title_text="AQI",       secondary_y=True)
-                fig2.update_layout(
-                    title="Temperature & AQI forecast",
-                    height=300, margin=dict(l=0,r=0,t=40,b=0),
-                    legend=dict(orientation="h", y=-0.3),
-                )
-                st.plotly_chart(fig2, use_container_width=True)
-
-            # ── Detailed table ────────────────────────────────────
-            with st.expander(f"📋 {city} — Full forecast table"):
-                tbl = fc_df[[
-                    "date","risk_label","composite_score",
-                    "adj_confidence","reliability",
-                    "temp_max","heat_index","humidity","aqi","rainfall",
-                    "consec_hot_days",
-                ]].copy()
-                tbl.columns = [
-                    "Date","Risk","Score","Confidence%","Reliability",
-                    "Tmax°C","HeatIdx°C","Humidity%","AQI","Rain(mm)",
-                    "HotDayStreak",
-                ]
-                tbl["Date"] = tbl["Date"].dt.strftime("%d %b %Y (%a)")
-
-                def colour_risk(val):
-                    c = {"Low":"#d5f5e3","Moderate":"#fef9e7",
-                         "High":"#fdebd0","Severe":"#fadbd8"}
-                    return f"background-color:{c.get(val,'')}"
-
-                def colour_rel(val):
-                    c = {"High":"#d5f5e3","Medium":"#fef9e7",
-                         "Low":"#fdebd0","Indicative":"#f0f0f0"}
-                    return f"background-color:{c.get(val,'')}"
-
-                styled = (tbl.style
-                          .applymap(colour_risk, subset=["Risk"])
-                          .applymap(colour_rel,  subset=["Reliability"]))
-                st.dataframe(styled, use_container_width=True)
-
-            # Compound event warning
-            compound_days = [d for d in fc_list if d["active_compounds"]]
-            if compound_days:
-                st.warning(
-                    f"⚠ **{city}** — compound risk events in forecast: " +
-                    ", ".join([f"{d['date'][5:]} ({', '.join(d['active_compounds'])})"
-                               for d in compound_days])
-                )
             st.markdown("---")
 
-        # ── Download all forecasts ────────────────────────────────
-        all_rows = []
-        for city, fc_list in all_fc.items():
-            for d in fc_list:
-                all_rows.append({
-                    "City": city, **{k: d[k] for k in
-                        ["date","days_ahead","risk_label","composite_score",
-                         "adj_confidence","reliability","temp_max","heat_index",
-                         "aqi","rainfall","active_compounds"]}
-                })
-        csv_out = pd.DataFrame(all_rows).to_csv(index=False)
-        st.download_button("⬇ Download full forecast CSV",
-                           csv_out, "forecast.csv", "text/csv")
+            # ── Detailed panels per city ─────────────────────────────────
+            valid = {c:r for c,r in results.items() if "error" not in r}
+            if not valid: st.stop()
 
+            tabs = st.tabs([f"{r['emoji']} {c}" for c,r in valid.items()])
+            for tab, (city, res) in zip(tabs, valid.items()):
+                with tab:
+                    a1, a2 = st.columns([1,1])
+
+                    with a1:
+                        # Probability bar chart
+                        probs = res["probabilities"]
+                        fig = go.Figure(go.Bar(
+                            x=list(probs.values()),
+                            y=list(probs.keys()),
+                            orientation="h",
+                            marker_color=[RISK_COLORS[i] for i in range(4)],
+                            text=[f"{v:.1f}%" for v in probs.values()],
+                            textposition="outside",
+                        ))
+                        fig.update_layout(
+                            title="Class Probabilities",
+                            xaxis=dict(range=[0,105], title="%"),
+                            height=220, margin=dict(l=10,r=10,t=40,b=10),
+                            showlegend=False,
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+
+                    with a2:
+                        # Pillar radar
+                        obs = res["raw_obs"]
+                        def _s(x,bps):
+                            for lo,hi,ilo,ihi in bps:
+                                if lo<=x<=hi: return round(((ihi-ilo)/(hi-lo))*(x-lo)+ilo,1)
+                            return 100.0
+                        hi_val = _heat_index(obs["temp_max"], obs["humidity"])
+                        st_t = 0 if obs["temp_max"]<35 else 25 if obs["temp_max"]<38 else 50 if obs["temp_max"]<40 else 75 if obs["temp_max"]<45 else 100
+                        st_h = _s(hi_val, [(0,27,0,0),(27,32,0,25),(32,41,25,50),(41,54,50,75),(54,100,75,100)])
+                        st_a = _s(obs["aqi"], [(0,50,0,0),(50,100,0,15),(100,200,15,40),(200,300,40,60),(300,400,60,80),(400,500,80,100)])
+                        # Heat+Air Pollution compound score (replaces drought)
+                        st_ap = min(100, int(obs["temp_max"]>=38 and obs["aqi"]>=150)*50 +
+                                         int(obs["temp_max"]>=38 and obs["aqi"]>=200)*50)
+                        st_c = min(100, (int(obs["temp_max"]>=38 and obs["aqi"]>=200)*30 +
+                                         int(obs["temp_max"]>=38 and obs["aqi"]>=150)*25 +
+                                         int(obs["temp_max"]>=38 and obs["humidity"]>=60)*20))
+                        rc   = RISK_COLORS[res["risk_level"]]
+                        fig  = go.Figure(go.Scatterpolar(
+                            r=[st_t,st_h,st_a,st_ap,st_c],
+                            theta=["Temperature","Heat Index","AQI","Air Pollution","Compound"],
+                            fill="toself",
+                            fillcolor='rgba(241, 196, 15, 0.27)',
+                            line_color=rc,
+                        ))
+                        fig.update_layout(
+                            title="Pillar Breakdown",
+                            polar=dict(radialaxis=dict(range=[0,100],tickfont_size=9)),
+                            height=220, margin=dict(l=10,r=10,t=40,b=10),
+                            showlegend=False,
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+
+                    # Advisory
+                    st.markdown(f"""<div class="advisory-box">
+                      <b>Advisory:</b> {res['advisory']}
+                    </div>""", unsafe_allow_html=True)
+
+                    # Compound flags
+                    if res["active_compounds"]:
+                        st.warning("⚠ Active Compound Risks: " +
+                                   " | ".join(res["active_compounds"]))
+
+                    # Context from history
+                    if df_all is not None:
+                        st.markdown("**Historical context — last 14 days:**")
+                        hist14 = (df_all[df_all["city"]==city]
+                                  .tail(14)[["date","temp_max","aqi","risk_label","composite_score"]]
+                                  .copy())
+                        hist14["date"] = hist14["date"].dt.strftime("%d %b")
+                        hist14.columns = ["Date","Tmax°C","AQI","Risk","Score"]
+                        st.dataframe(hist14.set_index("Date"), use_container_width=True)
+
+        else:
+            st.info("👆 Click **Fetch Live Data & Predict** to run today's or tomorrow's prediction.")
+
+
+
+    # ════════════════════════════════════════════════════════════════════════
+    # PAGE 2: HISTORICAL OVERVIEW
+    # ════════════════════════════════════════════════════════════════════════
     else:
-        st.info("👆 Click **Run Forecast** to generate predictions.")
+        st.title("📅 7-Day Heatwave Forecast")
+        st.caption(
+            "Chained ML forecast using Open-Meteo 16-day weather + 5-day AQ. "
+            "Confidence decays each day forward — see reliability label.")
+
+        # ── Controls ──────────────────────────────────────────────────────
+        fc1, fc2, fc3 = st.columns([2, 2, 3])
+        with fc1:
+            fc_cities = st.multiselect("Cities", CITIES, default=CITIES, key="fc_cities")
+        with fc2:
+            n_days = st.slider("Days ahead", 1, 16, 7, key="fc_days")
+        with fc3:
+            st.markdown("<br>", unsafe_allow_html=True)
+            run_fc = st.button("🔮 Run Forecast", type="primary",
+                               use_container_width=True, key="fc_btn")
+
+        # Reliability legend
+        st.markdown(
+            "> **Reliability:** "
+            "🟦 **High** (days 1–2) &nbsp;|&nbsp; "
+            "🟨 **Medium** (days 3–4) &nbsp;|&nbsp; "
+            "🟧 **Low** (days 5–7) &nbsp;|&nbsp; "
+            "⬜ **Indicative** (days 8+)"
+        )
+        st.markdown("---")
+
+        if run_fc:
+            # ── import the forecast engine ─────────────────────────────
+            import importlib.util, sys
+            spec = importlib.util.spec_from_file_location(
+                "step7c", os.path.join(os.path.dirname(__file__),
+                                        "step7c_multiday_forecast.py"))
+            if spec is None:
+                st.error("step7c_multiday_forecast.py not found in the same folder.")
+                st.stop()
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules["step7c"] = mod
+            spec.loader.exec_module(mod)
+
+            all_fc = {}
+            prog   = st.progress(0, text="Starting forecast...")
+            for idx, city in enumerate(fc_cities):
+                prog.progress((idx + 0.3) / len(fc_cities),
+                              text=f"Forecasting {city}...")
+                fc = mod.forecast_city(city, n_days=n_days)
+                all_fc[city] = fc
+                prog.progress((idx + 1) / len(fc_cities),
+                              text=f"{city} done")
+
+            prog.progress(1.0, text="Complete!")
+            st.session_state["fc_results"] = all_fc
+            st.session_state["fc_n_days"]  = n_days
+
+        # ── Display results ─────────────────────────────────────────────
+        if "fc_results" in st.session_state and st.session_state["fc_results"]:
+            all_fc = st.session_state["fc_results"]
+            n      = st.session_state.get("fc_n_days", 7)
+
+            RELIABILITY_COLORS = {
+                "High"       : "#2ECC71",
+                "Medium"     : "#F1C40F",
+                "Low"        : "#E67E22",
+                "Indicative" : "#BDC3C7",
+            }
+
+            for city, fc_list in all_fc.items():
+                if not fc_list:
+                    st.error(f"{city}: forecast failed.")
+                    continue
+
+                st.subheader(f"📍 {city}")
+
+                # ── Risk card strip ──────────────────────────────────
+                card_cols = st.columns(min(len(fc_list), 8))
+                for col, day in zip(card_cols, fc_list[:8]):
+                    risk  = day["risk_label"]
+                    bg    = {"Low":"#d5f5e3","Moderate":"#fef9e7",
+                              "High":"#fdebd0","Severe":"#fadbd8"}.get(risk,"#f0f0f0")
+                    rel_c = RELIABILITY_COLORS.get(day["reliability"], "#ccc")
+                    col.markdown(f"""
+                    <div style="background:{bg};border:2px solid {rel_c};
+                      border-radius:10px;padding:8px;text-align:center;font-size:0.8rem">
+                      <div style="font-size:0.7rem;color:#888">{day["date"][5:]}</div>
+                      <div style="font-size:1.6rem">{day["emoji"]}</div>
+                      <div style="font-weight:700;font-size:0.8rem">{risk}</div>
+                      <div style="font-size:0.7rem">{day["adj_confidence"]:.0f}%</div>
+                      <div style="font-size:0.7rem">🌡{day["temp_max"]}°C</div>
+                    </div>""", unsafe_allow_html=True)
+
+                # ── Charts ───────────────────────────────────────────
+                fc_df = pd.DataFrame(fc_list)
+                fc_df["date"] = pd.to_datetime(fc_df["date"])
+
+                ch1, ch2 = st.columns(2)
+
+                with ch1:
+                    # Composite score + confidence band
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=fc_df["date"], y=fc_df["composite_score"],
+                        name="Risk Score",
+                        line=dict(color=CITY_COLORS.get(city,"#3498DB"), width=2),
+                        mode="lines+markers",
+                    ))
+                    # Confidence band: score ± (1-decay)*score
+                    fc_df["upper"] = fc_df["composite_score"] * (
+                        1 + (1 - fc_df["decay_factor"]) * 0.5)
+                    fc_df["lower"] = fc_df["composite_score"] * (
+                        1 - (1 - fc_df["decay_factor"]) * 0.5)
+                    # fig.add_trace(go.Scatter(
+                    #     x=pd.concat([fc_df["date"], fc_df["date"][::-1]]),
+                    #     y=pd.concat([fc_df["upper"], fc_df["lower"][::-1]]),
+                    #     fill="toself",
+                    #     fillcolor=CITY_COLORS.get(city,"#3498DB") + "22",
+                    #     line=dict(color="rgba(0,0,0,0)"),
+                    #     name="Uncertainty band",
+                    # ))
+                    hex_color = CITY_COLORS.get(city, "#3498DB").lstrip("#")
+                    r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+                    fill_col = f"rgba({r}, {g}, {b}, 0.13)"
+
+                    fig.add_trace(go.Scatter(
+                        x=pd.concat([fc_df["date"], fc_df["date"][::-1]]),
+                        y=pd.concat([fc_df["upper"], fc_df["lower"][::-1]]),
+                        fill="toself",
+                        fillcolor=fill_col,
+                        line=dict(color="rgba(0,0,0,0)"),
+                        name="Uncertainty band",
+                    ))
+
+                    fig.add_hline(y=50, line_dash="dot",
+                                  line_color="orange", annotation_text="High (50)")
+                    fig.add_hline(y=75, line_dash="dot",
+                                  line_color="red", annotation_text="Severe (75)")
+                    fig.update_layout(
+                        title="Composite Risk Score + Uncertainty",
+                        height=300, margin=dict(l=0,r=0,t=40,b=0),
+                        legend=dict(orientation="h", y=-0.3),
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+
+                with ch2:
+                    # Temperature + AQI dual axis
+                    fig2 = make_subplots(specs=[[{"secondary_y": True}]])
+                    fig2.add_trace(go.Bar(
+                        x=fc_df["date"], y=fc_df["temp_max"],
+                        name="Tmax (°C)",
+                        marker_color=[RISK_COLORS[r] for r in fc_df["risk_level"]],
+                        opacity=0.8,
+                    ), secondary_y=False)
+                    fig2.add_trace(go.Scatter(
+                        x=fc_df["date"], y=fc_df["aqi"],
+                        name="AQI",
+                        line=dict(color="#8E44AD", width=2, dash="dot"),
+                        mode="lines+markers",
+                    ), secondary_y=True)
+                    fig2.update_yaxes(title_text="Tmax (°C)", secondary_y=False)
+                    fig2.update_yaxes(title_text="AQI",       secondary_y=True)
+                    fig2.update_layout(
+                        title="Temperature & AQI forecast",
+                        height=300, margin=dict(l=0,r=0,t=40,b=0),
+                        legend=dict(orientation="h", y=-0.3),
+                    )
+                    st.plotly_chart(fig2, use_container_width=True)
+
+                # ── Detailed table ────────────────────────────────────
+                with st.expander(f"📋 {city} — Full forecast table"):
+                    tbl = fc_df[[
+                        "date","risk_label","composite_score",
+                        "adj_confidence","reliability",
+                        "temp_max","heat_index","humidity","aqi","rainfall",
+                        "consec_hot_days",
+                    ]].copy()
+                    tbl.columns = [
+                        "Date","Risk","Score","Confidence%","Reliability",
+                        "Tmax°C","HeatIdx°C","Humidity%","AQI","Rain(mm)",
+                        "HotDayStreak",
+                    ]
+                    tbl["Date"] = tbl["Date"].dt.strftime("%d %b %Y (%a)")
+
+                    def colour_risk(val):
+                        c = {"Low":"#d5f5e3","Moderate":"#fef9e7",
+                             "High":"#fdebd0","Severe":"#fadbd8"}
+                        return f"background-color:{c.get(val,'')}"
+
+                    def colour_rel(val):
+                        c = {"High":"#d5f5e3","Medium":"#fef9e7",
+                             "Low":"#fdebd0","Indicative":"#f0f0f0"}
+                        return f"background-color:{c.get(val,'')}"
+
+                    styled = (tbl.style
+                              .map(colour_risk, subset=["Risk"])
+                              .map(colour_rel,  subset=["Reliability"]))
+                    st.dataframe(styled, use_container_width=True)
+
+                # Compound event warning
+                compound_days = [d for d in fc_list if d["active_compounds"]]
+                if compound_days:
+                    st.warning(
+                        f"⚠ **{city}** — compound risk events in forecast: " +
+                        ", ".join([f"{d['date'][5:]} ({', '.join(d['active_compounds'])})"
+                                   for d in compound_days])
+                    )
+                st.markdown("---")
+
+            # ── Download all forecasts ────────────────────────────────
+            all_rows = []
+            for city, fc_list in all_fc.items():
+                for d in fc_list:
+                    all_rows.append({
+                        "City": city, **{k: d[k] for k in
+                            ["date","days_ahead","risk_label","composite_score",
+                             "adj_confidence","reliability","temp_max","heat_index",
+                             "aqi","rainfall","active_compounds"]}
+                    })
+            csv_out = pd.DataFrame(all_rows).to_csv(index=False)
+            st.download_button("⬇ Download full forecast CSV",
+                               csv_out, "forecast.csv", "text/csv")
+
+        else:
+            st.info("👆 Click **Run Forecast** to generate predictions.")
 
 elif "Monthly" in page:
-    st.title("📆 Monthly Risk Outlook")
+    st.title("📆 Monthly Outlook (Seasonal Prediction)")
     st.caption(
         "Seasonal prediction using historical climate normals + warming trend. "
         "Months 1–6 are reliable; months 7–12 are indicative trend only.")
@@ -4839,6 +4834,19 @@ elif "Monthly" in page:
             fc_df = pd.DataFrame(fc_list)
             fc_df["label"] = fc_df["month_name"] + " " + fc_df["year"].astype(str)
 
+            st.markdown("<br>", unsafe_allow_html=True)
+            m1, m2, m3, m4 = st.columns(4)
+            avg_tmax = fc_df["exp_tmax"].mean()
+            max_tmax = fc_df["exp_tmax"].max()
+            total_high = fc_df["n_high_risk_days"].sum() if "n_high_risk_days" in fc_df.columns else 0
+            trend_adj_max = fc_df["trend_adj_applied"].max() if "trend_adj_applied" in fc_df.columns else 0
+            
+            m1.metric("Average Tmax (Year)", f"{avg_tmax:.1f}°C")
+            m2.metric("Peak Tmax Predicted", f"{max_tmax:.1f}°C")
+            m3.metric("Total High-Risk Days", f"{total_high:.0f}")
+            m4.metric("Climate Warming Adj.", f"+{trend_adj_max:.2f}°C")
+            st.markdown("<br>", unsafe_allow_html=True)
+
             ch1, ch2 = st.columns(2)
 
             with ch1:
@@ -4873,12 +4881,18 @@ elif "Monthly" in page:
                         x=fc_df["label"],
                         y=fc_df["n_high_risk_days"].fillna(0),
                         name="Est. high-risk days",
-                        marker_color="#E67E22", opacity=0.5,
+                        marker_color="#E67E22", opacity=0.4,
+                    ), secondary_y=True)
+                if "exp_aqi" in fc_df.columns:
+                    fig2.add_trace(go.Scatter(
+                        x=fc_df["label"], y=fc_df["exp_aqi"],
+                        name="Expected AQI", mode="lines+markers",
+                        line=dict(color="#8E44AD", width=2, dash="dot"),
                     ), secondary_y=True)
                 fig2.update_yaxes(title_text="Tmax °C",    secondary_y=False)
-                fig2.update_yaxes(title_text="High-risk days", secondary_y=True)
+                fig2.update_yaxes(title_text="Days / AQI", secondary_y=True)
                 fig2.update_layout(
-                    title="Expected Temp & High-Risk Days",
+                    title="Expected Temp, AQI & High-Risk Days",
                     height=300, margin=dict(l=0,r=0,t=40,b=60),
                     xaxis_tickangle=-45,
                     legend=dict(orientation="h", y=-0.4),
@@ -4912,6 +4926,82 @@ elif "Monthly" in page:
                 )
                 st.plotly_chart(fig3, use_container_width=True)
 
+            # ── Seasonal Compound Risk Breakdown ──────────────────────────
+            st.markdown("**🔥 Seasonal Compound Risk Analysis**")
+            st.caption(
+                "Estimated compound risks per month based on climate normals. "
+                "Heat+Drought is included here — appropriate at the seasonal scale "
+                "(slow-moving phenomenon). Daily prediction uses Heat+Air Pollution instead.")
+
+            _hum_normal = {3:45,4:40,5:45,6:65,7:80,8:78,9:72,
+                           10:55,11:50,12:50,1:55,2:50}
+            _dry_months  = {3,4,5,11,12}
+
+            comp_rows = []
+            for m_s in fc_list:
+                month_num  = m_s["month"]
+                month_lbl  = m_s["month_name"] + " " + str(m_s["year"])
+                exp_t      = m_s["exp_tmax"]
+                exp_aqi    = m_s["exp_aqi"]
+                exp_hum    = _hum_normal.get(month_num, 50)
+
+                heat_aqi_flag      = int(exp_t >= 38 and exp_aqi >= 200)
+                heat_ap_flag       = int(exp_t >= 38 and exp_aqi >= 150)
+                heat_hum_flag      = int(exp_t >= 38 and exp_hum >= 60)
+                heat_drought_flag  = int(exp_t >= 38 and month_num in _dry_months)
+                triple_flag        = int(exp_t >= 38 and exp_aqi >= 150 and exp_hum >= 60)
+                quad_flag          = int(heat_drought_flag and triple_flag)
+
+                comp_rows.append({
+                    "Month"           : month_lbl,
+                    "Exp Tmax°C"      : exp_t,
+                    "Exp AQI"         : int(exp_aqi),
+                    "Est Humidity%"   : exp_hum,
+                    "Heat+AQI Severe" : "✅" if heat_aqi_flag     else "—",
+                    "Heat+Air Poll."  : "✅" if heat_ap_flag      else "—",
+                    "Heat+Humidity"   : "✅" if heat_hum_flag     else "—",
+                    "Heat+Drought"    : "✅" if heat_drought_flag else "—",
+                    "Triple"          : "✅" if triple_flag       else "—",
+                    "Quadruple"       : "✅" if quad_flag         else "—",
+                })
+
+            comp_df = pd.DataFrame(comp_rows)
+            compound_flag_cols = [
+                "Heat+AQI Severe","Heat+Air Poll.",
+                "Heat+Humidity","Heat+Drought","Triple","Quadruple"
+            ]
+            counts_s = comp_df[compound_flag_cols].apply(
+                lambda col: (col == "✅").astype(int))
+            counts_s["Month"] = comp_df["Month"]
+            melted_s = counts_s.melt(id_vars="Month",
+                                     value_vars=compound_flag_cols,
+                                     var_name="Compound Type",
+                                     value_name="Active")
+            melted_s = melted_s[melted_s["Active"] == 1]
+
+            if not melted_s.empty:
+                fig_cmp = px.bar(
+                    melted_s, x="Month", y="Active",
+                    color="Compound Type", barmode="stack",
+                    title=f"{city} — Seasonal Compound Risks per Month",
+                    color_discrete_sequence=[
+                        "#E74C3C","#E67E22","#3498DB",
+                        "#27AE60","#8E44AD","#2C3E50"
+                    ],
+                    labels={"Active": "Active Compound Types"},
+                    height=300,
+                )
+                fig_cmp.update_layout(
+                    margin=dict(l=0,r=0,t=40,b=80),
+                    xaxis_tickangle=-45,
+                    legend=dict(orientation="h", y=-0.65),
+                    yaxis=dict(dtick=1, title=""),
+                )
+                st.plotly_chart(fig_cmp, use_container_width=True)
+
+            with st.expander(f"📋 {city} — Seasonal compound details table"):
+                st.dataframe(comp_df.set_index("Month"), use_container_width=True)
+
             # Detailed table
             with st.expander(f"📋 {city} — Full monthly table"):
                 tbl = fc_df[[
@@ -4928,7 +5018,7 @@ elif "Monthly" in page:
                     c = {"Low":"#d5f5e3","Moderate":"#fef9e7",
                          "High":"#fdebd0","Severe":"#fadbd8"}
                     return f"background-color:{c.get(v,'')}"
-                st.dataframe(tbl.style.applymap(cr, subset=["Risk"]),
+                st.dataframe(tbl.style.map(cr, subset=["Risk"]),
                              use_container_width=True)
 
             st.markdown("---")
@@ -4947,15 +5037,15 @@ elif "Monthly" in page:
 
     else:
         st.info("👆 Click **Generate Monthly Outlook** to run the seasonal forecast.")
-        st.markdown("""
-        **How this works:**
-        - Historical monthly statistics (2020–2025+) are used to compute
-          climate normals for each month.
-        - A long-term warming trend (°C/year) is estimated from your data.
-        - For each forecast month: baseline = climate normal + trend adjustment.
-        - Lag features (last month, last year same month) use real observed values.
-        - The trained seasonal ML model converts these into risk level + probabilities.
-        """)
+    #     st.markdown("""
+    #     **How this works:**
+    #     - Historical monthly statistics (2020–2025+) are used to compute
+    #       climate normals for each month.
+    #     - A long-term warming trend (°C/year) is estimated from your data.
+    #     - For each forecast month: baseline = climate normal + trend adjustment.
+    #     - Lag features (last month, last year same month) use real observed values.
+    #     - The trained seasonal ML model converts these into risk level + probabilities.
+    #     """)
 
 elif "Overview" in page:
     st.title("🏠 Historical Risk Overview")
@@ -5056,21 +5146,31 @@ elif "Trends" in page:
         st.plotly_chart(fig2,use_container_width=True)
 
     with tab3:
-        ccols = ["compound_heat_aqi","compound_heat_drought",
-                 "compound_heat_humidity","triple_compound"]
-        nice  = ["Heat+AQI","Heat+Drought","Heat+Humidity","Triple"]
-        grp   = df_view.groupby(["city","month"])[ccols].sum().reset_index()
+        # Use available compound columns (daily-appropriate only)
+        avail_cols = [c for c in ["compound_heat_aqi","compound_heat_air_pollution",
+                                   "compound_heat_humidity","triple_compound"]
+                      if c in df_view.columns]
+        nice_map = {
+            "compound_heat_aqi"          : "Heat+AQI (Severe ≥200)",
+            "compound_heat_air_pollution": "Heat+Air Pollution (≥150)",
+            "compound_heat_humidity"     : "Heat+Humidity",
+            "triple_compound"            : "Triple (Heat+AQI+Humidity)",
+        }
+        nice = [nice_map[c] for c in avail_cols]
+        grp   = df_view.groupby(["city","month"])[avail_cols].sum().reset_index()
         grp.columns = ["city","month"]+nice
         melted = grp.melt(id_vars=["city","month"],value_vars=nice,
                           var_name="Type",value_name="Days")
         fig = px.bar(melted,x="month",y="Days",color="Type",facet_col="city",
-                     barmode="group",title="Monthly Compound Event Frequency")
+                     barmode="group",title="Monthly Compound Event Frequency (Daily Risks)",
+                     color_discrete_sequence=["#E74C3C","#E67E22","#3498DB","#8E44AD"])
         st.plotly_chart(fig,use_container_width=True)
 
         # Compound event timeline
-        fig2 = px.area(df_view,x="date",y="triple_compound",color="city",
+        tc_col = "triple_compound" if "triple_compound" in df_view.columns else avail_cols[-1]
+        fig2 = px.area(df_view,x="date",y=tc_col,color="city",
                        color_discrete_map=CITY_COLORS,
-                       title="Triple Compound Events Over Time")
+                       title="Triple Compound Events Over Time (Heat + AQI ≥150 + Humidity ≥60%)")
         st.plotly_chart(fig2,use_container_width=True)
 
     with tab4:
@@ -5091,25 +5191,99 @@ elif "Trends" in page:
 # ════════════════════════════════════════════════════════════════════════
 elif "Manual" in page:
     st.title("🔍 Manual Prediction")
-    st.caption("Enter any values manually — uses the full ML model with rolling history context.")
+    st.caption("Choose how you want to supply the weather inputs — then click Predict.")
 
-    c1,c2 = st.columns(2)
-    with c1:
-        city_m   = st.selectbox("City",CITIES)
-        t_max    = st.slider("Temperature Max (°C)",20.0,50.0,38.0,0.5)
-        t_min    = st.slider("Temperature Min (°C)",10.0,35.0,24.0,0.5)
-        humidity = st.slider("Humidity (%)",5,100,45)
-    with c2:
-        wind     = st.slider("Wind Speed (km/h)",0.0,50.0,10.0,0.5)
-        rainfall = st.slider("Rainfall (mm)",0.0,100.0,0.0,0.5)
-        aqi_m    = st.slider("AQI (India CPCB)",0,500,120)
+    # ── City picker ───────────────────────────────────────────────────────
+    city_m = st.selectbox("City", CITIES, key="man_city")
 
-    pred_date = st.date_input("Date", value=date.today())
+    st.markdown("---")
 
-    if st.button("🔮 Predict Risk",type="primary"):
-        obs = {"date":str(pred_date),"temp_max":t_max,"temp_min":t_min,
-               "humidity":humidity,"wind":wind,"rainfall":rainfall,"aqi":aqi_m}
-        result, err = predict_for_city(city_m, obs)
+    # ── Mode toggle ───────────────────────────────────────────────────────
+    mode = st.radio(
+        "**Input Mode**",
+        options=["📅 Pick a Date from History", "🎛️ Set Values Manually"],
+        horizontal=True,
+        key="man_mode",
+    )
+    st.markdown("")
+
+    # ─────────────────────────────────────────────────────────────────────
+    # MODE A: DATE LOOKUP  — loads values from processed CSV for that date
+    # ─────────────────────────────────────────────────────────────────────
+    if mode == "📅 Pick a Date from History":
+        st.markdown("##### Select a date — observed values are loaded automatically from the processed CSV.")
+        pred_date = st.date_input("Date", value=date.today(), key="man_date_a")
+
+        _city_hist = load_city_history(city_m)
+        _obs_from_csv = None
+        if _city_hist is not None:
+            _city_hist["date"] = pd.to_datetime(_city_hist["date"], errors="coerce")
+            _match = _city_hist[_city_hist["date"].dt.date == pred_date]
+            if not _match.empty:
+                _row = _match.iloc[-1]
+                _obs_from_csv = {
+                    "date"    : str(pred_date),
+                    "temp_max": float(_row.get("temp_max", 38)),
+                    "temp_min": float(_row.get("temp_min", 24)),
+                    "humidity": float(_row.get("humidity", 45)),
+                    "wind"    : float(_row.get("wind",    10)),
+                    "rainfall": float(_row.get("rainfall",  0)),
+                    "aqi"     : float(_row.get("aqi",     120)),
+                }
+
+        if _obs_from_csv:
+            st.success(f"✅ **{pred_date}** found in processed data for **{city_m}**", icon="📂")
+            o = _obs_from_csv
+            # Display as clean read-only metrics — no sliders needed
+            mc = st.columns(6)
+            for col_ui, lbl, v in zip(mc,
+                ["Tmax °C","Tmin °C","Humidity %","Wind km/h","Rainfall mm","AQI"],
+                [o["temp_max"],o["temp_min"],o["humidity"],o["wind"],o["rainfall"],o["aqi"]]):
+                col_ui.metric(lbl, f"{v:.1f}")
+            t_max    = o["temp_max"]
+            t_min    = o["temp_min"]
+            humidity = int(o["humidity"])
+            wind     = o["wind"]
+            rainfall = o["rainfall"]
+            aqi_m    = int(o["aqi"])
+            obs_ready = True
+        else:
+            if pred_date < date.today():
+                st.warning(
+                    f"⚠️ **{pred_date}** not found in the processed CSV for **{city_m}**. "
+                    "Try another date, or switch to **Set Values Manually**.", icon="🗓️")
+            else:
+                st.info("Today's / future dates are not in historical CSV. "
+                        "Switch to **Set Values Manually** mode.", icon="✍️")
+            obs_ready = False
+            t_max = t_min = humidity = wind = rainfall = aqi_m = None
+
+    # ─────────────────────────────────────────────────────────────────────
+    # MODE B: MANUAL SLIDERS — full control over every weather parameter
+    # ─────────────────────────────────────────────────────────────────────
+    else:
+        st.markdown("##### Adjust the sliders to any custom weather condition.")
+        pred_date = st.date_input("Date (for logging)", value=date.today(), key="man_date_b")
+        c1, c2 = st.columns(2)
+        with c1:
+            t_max    = st.slider("Temperature Max (°C)", 20.0, 50.0, 38.0, 0.5, key="man_tmax")
+            t_min    = st.slider("Temperature Min (°C)", 10.0, 35.0, 24.0, 0.5, key="man_tmin")
+            humidity = st.slider("Humidity (%)", 5, 100, 45, key="man_hum")
+        with c2:
+            wind     = st.slider("Wind Speed (km/h)", 0.0, 50.0, 10.0, 0.5, key="man_wind")
+            rainfall = st.slider("Rainfall (mm)", 0.0, 100.0, 0.0, 0.5, key="man_rain")
+            aqi_m    = st.slider("AQI (India CPCB)", 0, 500, 120, key="man_aqi")
+        obs_ready = True
+
+    # ─────────────────────────────────────────────────────────────────────
+    # PREDICT — shared for both modes
+    # ─────────────────────────────────────────────────────────────────────
+    st.markdown("")
+    if st.button("🔮 Predict Risk", type="primary", key="man_predict_btn",
+                 disabled=not obs_ready):
+        obs = {"date": str(pred_date), "temp_max": t_max, "temp_min": t_min,
+               "humidity": humidity, "wind": wind, "rainfall": rainfall, "aqi": aqi_m}
+        result, err = predict_for_city(city_m, obs, pred_date=pred_date)
 
         if err:
             st.error(err)
@@ -5117,10 +5291,12 @@ elif "Manual" in page:
             risk  = result["risk_label"]
             emoji = result["emoji"]
             rc    = RISK_COLORS[result["risk_level"]]
+            src_lbl = "from CSV" if mode.startswith("📅") else "manual input"
 
             st.markdown(f"""
             <div class="risk-card risk-{risk.upper()}" style="max-width:480px;margin:auto">
-              <div style="font-size:1.2rem;font-weight:700">{city_m}</div>
+              <div style="font-size:1.2rem;font-weight:700">{city_m} — {pred_date}
+                <span style="font-size:0.75rem;opacity:0.7"> ({src_lbl})</span></div>
               <div style="font-size:3.5rem">{emoji}</div>
               <div class="metric-big">{risk}</div>
               <div class="metric-sub">Score: {result['composite_score']} / 100
@@ -5131,10 +5307,10 @@ elif "Manual" in page:
             </div>""", unsafe_allow_html=True)
 
             if result["active_compounds"]:
-                st.warning("⚠ Compound risks: "+", ".join(result["active_compounds"]))
+                st.warning("⚠ Compound risks: " + ", ".join(result["active_compounds"]))
             st.info(result["advisory"])
 
-            r1,r2 = st.columns(2)
+            r1, r2 = st.columns(2)
             with r1:
                 probs = result["probabilities"]
                 fig = go.Figure(go.Bar(
@@ -5144,28 +5320,33 @@ elif "Manual" in page:
                     text=[f"{v:.1f}%" for v in probs.values()],
                     textposition="outside",
                 ))
-                fig.update_layout(title="Class probabilities",xaxis_range=[0,110],
-                                  height=250,margin=dict(l=0,r=0,t=40,b=0),
+                fig.update_layout(title="Class probabilities", xaxis_range=[0, 110],
+                                  height=250, margin=dict(l=0,r=0,t=40,b=0),
                                   showlegend=False)
-                st.plotly_chart(fig,use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True)
 
             with r2:
-                hi_v = _heat_index(t_max,humidity)
-                st_t = 0 if t_max<35 else 25 if t_max<38 else 50 if t_max<40 else 75 if t_max<45 else 100
-                st_h = 0 if hi_v<27 else 25 if hi_v<32 else 50 if hi_v<41 else 75 if hi_v<54 else 100
-                st_a = 0 if aqi_m<=50 else 15 if aqi_m<=100 else 40 if aqi_m<=200 else 60 if aqi_m<=300 else 80 if aqi_m<=400 else 100
-                st_d = 40 if rainfall<1 else 0
-                st_c = min(100,int(t_max>=38 and aqi_m>=200)*30+int(t_max>=38 and rainfall<1)*25+int(t_max>=38 and humidity>=60)*20)
-                fig  = go.Figure(go.Scatterpolar(
-                    r=[st_t,st_h,st_a,st_d,st_c],
-                    theta=["Temperature","Heat Index","AQI","Drought","Compound"],
-                    fill="toself",fillcolor = 'rgba(241, 196, 15, 0.27)',line_color=rc,
+                hi_v  = _heat_index(t_max, humidity)
+                st_t  = 0 if t_max<35 else 25 if t_max<38 else 50 if t_max<40 else 75 if t_max<45 else 100
+                st_h  = 0 if hi_v<27 else 25 if hi_v<32 else 50 if hi_v<41 else 75 if hi_v<54 else 100
+                st_a  = 0 if aqi_m<=50 else 15 if aqi_m<=100 else 40 if aqi_m<=200 else 60 if aqi_m<=300 else 80 if aqi_m<=400 else 100
+                st_ap = min(100, int(t_max>=38 and aqi_m>=150)*50 +
+                                 int(t_max>=38 and aqi_m>=200)*50)
+                st_c  = min(100, int(t_max>=38 and aqi_m>=200)*30 +
+                                 int(t_max>=38 and aqi_m>=150)*25 +
+                                 int(t_max>=38 and humidity>=60)*20)
+                fig = go.Figure(go.Scatterpolar(
+                    r=[st_t, st_h, st_a, st_ap, st_c],
+                    theta=["Temperature", "Heat Index", "AQI", "Air Pollution", "Compound"],
+                    fill="toself",
+                    fillcolor='rgba(241, 196, 15, 0.27)',
+                    line_color=rc,
                 ))
                 fig.update_layout(title="Pillar scores",
-                                  polar=dict(radialaxis=dict(range=[0,100])),
-                                  height=250,margin=dict(l=0,r=0,t=40,b=0),
+                                  polar=dict(radialaxis=dict(range=[0, 100])),
+                                  height=250, margin=dict(l=0,r=0,t=40,b=0),
                                   showlegend=False)
-                st.plotly_chart(fig,use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True)
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -5275,7 +5456,8 @@ elif "Log" in page:
         c = {"Low":"#d5f5e3","Moderate":"#fef9e7","High":"#fdebd0","Severe":"#fadbd8"}
         return f"background-color:{c.get(val,'')}"
 
-    styled = log_df.style.applymap(colour_risk, subset=["Risk"])
+    # styled = log_df.style.applymap(colour_risk, subset=["Risk"])
+    styled = log_df.style.map(colour_risk, subset=["Risk"])
     st.dataframe(styled, use_container_width=True, height=420)
 
     # Mini trend of logged predictions

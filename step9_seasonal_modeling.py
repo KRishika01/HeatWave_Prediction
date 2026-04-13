@@ -45,6 +45,7 @@ from sklearn.model_selection   import TimeSeriesSplit, cross_val_score
 from sklearn.metrics           import (f1_score, accuracy_score, classification_report,
                                         mean_absolute_error, r2_score,
                                         roc_auc_score, confusion_matrix)
+from sklearn.metrics           import make_scorer
 from sklearn.preprocessing     import LabelEncoder
 import xgboost  as xgb
 import lightgbm as lgb
@@ -98,6 +99,17 @@ def get_features(df: pd.DataFrame) -> list[str]:
     return [c for c in ALL_FEATURES if c in df.columns]
 
 
+# ── SAFE F1 SCORER ───────────────────────────────────────────────────────
+# When a CV fold has only 1 class in predictions (common for imbalanced
+# seasonal data like Hyderabad with few Severe months), sklearn's built-in
+# 'f1_macro' returns NaN due to 0/0 in per-class averaging.
+# This custom scorer suppresses that warning and returns 0.0 instead.
+def _safe_f1_macro(y_true, y_pred):
+    return f1_score(y_true, y_pred, average="macro", zero_division=0)
+
+SAFE_F1 = make_scorer(_safe_f1_macro)
+
+
 # ════════════════════════════════════════════════════════════════════════
 # TARGET 1: MONTHLY RISK CLASSIFICATION
 # ════════════════════════════════════════════════════════════════════════
@@ -127,8 +139,9 @@ def train_classifier(X: np.ndarray, y: np.ndarray,
 
     print(f"\n  ── {city_tag} — Classification (monthly risk level) ──")
     for name, model in models.items():
-        cv_f1 = cross_val_score(model, X, y, cv=tscv,
-                                scoring="f1_macro").mean()
+        # Use safe F1 scorer to avoid NaN when a CV fold has only 1 class
+        cv_scores = cross_val_score(model, X, y, cv=tscv, scoring=SAFE_F1)
+        cv_f1 = float(np.nanmean(cv_scores))   # nanmean: ignore any remaining NaN folds
         model.fit(X, y)
         preds = model.predict(X)
         train_f1 = f1_score(y, preds, average="macro", zero_division=0)
@@ -143,7 +156,8 @@ def train_classifier(X: np.ndarray, y: np.ndarray,
                     ("xgb", fitted["XGBoost"]),
                     ("lgb", fitted["LightGBM"])],
         voting="soft")
-    cv_ens = cross_val_score(ens, X, y, cv=tscv, scoring="f1_macro").mean()
+    cv_ens_scores = cross_val_score(ens, X, y, cv=tscv, scoring=SAFE_F1)
+    cv_ens = float(np.nanmean(cv_ens_scores))
     ens.fit(X, y)
     preds_e = ens.predict(X)
     ens_f1  = f1_score(y, preds_e, average="macro", zero_division=0)
@@ -152,7 +166,9 @@ def train_classifier(X: np.ndarray, y: np.ndarray,
     fitted["Ensemble"] = ens
     print(f"    {'Ensemble':16s}  CV F1={cv_ens:.3f}  Train F1={ens_f1:.3f}")
 
-    best_name  = max(results, key=lambda k: results[k]["cv_macro_f1"])
+    # NaN-safe best model selection
+    best_name  = max(results, key=lambda k: results[k]["cv_macro_f1"]
+                     if not np.isnan(results[k]["cv_macro_f1"]) else -1.0)
     best_model = fitted[best_name]
     print(f"    [✓] Best: {best_name}  (CV F1={results[best_name]['cv_macro_f1']:.3f})")
     return best_model, results
@@ -404,7 +420,9 @@ if __name__ == "__main__":
         summary[city] = {
             "months"          : len(city_df),
             "features"        : len(feat_cols),
-            "best_clf_cv_f1"  : max(v["cv_macro_f1"] for v in cls_results.values()),
+            # NaN-safe: ignore any model whose CV F1 is NaN
+            "best_clf_cv_f1"  : float(np.nanmax([v["cv_macro_f1"]
+                                                  for v in cls_results.values()])),
             "warming_slope"   : normals["warming_slope"],
         }
 

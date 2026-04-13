@@ -1,0 +1,30 @@
+{
+  "risk_level": 0,
+  "risk_label": "Low",
+  "emoji": "\ud83d\udfe2",
+  "confidence": 100.0,
+  "probabilities": {
+    "Low": 100.0,
+    "Moderate": 0.0,
+    "High": 0.0,
+    "Severe": 0.0
+  },
+  "composite_score": 19.8,
+  "heat_index": 44.0,
+  "humidex": 28.9,
+  "consec_hot_days": 40,
+  "active_compounds": [],
+  "advisory": "No significant heat risk. Normal activities are safe.",
+  "city": "Delhi",
+  "date": "2026-04-13",
+  "is_forecast": false,
+  "raw_obs": {
+    "date": "2026-04-13",
+    "temp_max": 34.5,
+    "temp_min": 20.2,
+    "humidity": 61,
+    "wind": 11.3,
+    "rainfall": 0,
+    "aqi": 445.0
+  }
+}

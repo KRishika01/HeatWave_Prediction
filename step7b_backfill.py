@@ -109,8 +109,8 @@ def fetch_weather_archive(lat: float, lon: float,
         # Fill any NaN in rainfall with 0
         df["rainfall"] = df["rainfall"].fillna(0)
         # Fill other NaNs with forward fill
-        df.fillna(method="ffill", inplace=True)
-        df.fillna(method="bfill", inplace=True)
+        df.ffill(inplace=True)
+        df.bfill(inplace=True)
         return df
     except requests.exceptions.RequestException as e:
         print(f"    [!] Weather archive fetch failed: {e}")

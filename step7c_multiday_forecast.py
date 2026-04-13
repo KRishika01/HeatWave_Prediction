@@ -130,8 +130,8 @@ def fetch_weather_forecast(lat: float, lon: float,
             "rainfall": d["precipitation_sum"],
         })
         df["rainfall"] = df["rainfall"].fillna(0)
-        df.fillna(method="ffill", inplace=True)
-        df.fillna(method="bfill", inplace=True)
+        df.ffill(inplace=True)
+        df.bfill(inplace=True)
         df.set_index("date", inplace=True)
         return df
     except Exception as e:

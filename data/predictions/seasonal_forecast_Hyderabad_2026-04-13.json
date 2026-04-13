@@ -106,7 +106,7 @@
     "p_severe_day": null,
     "p_compound_event": 1.2,
     "exp_tmax": 28.7,
-    "exp_aqi": 59.0,
+    "exp_aqi": 56.0,
     "trend_adj_applied": -0.753,
     "lag12_available": true,
     "city": "Hyderabad"
@@ -134,7 +134,7 @@
     "p_severe_day": null,
     "p_compound_event": 1.2,
     "exp_tmax": 28.4,
-    "exp_aqi": 61.0,
+    "exp_aqi": 60.0,
     "trend_adj_applied": -0.753,
     "lag12_available": true,
     "city": "Hyderabad"
