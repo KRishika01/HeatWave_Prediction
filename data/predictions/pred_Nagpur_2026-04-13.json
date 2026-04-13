@@ -1,0 +1,30 @@
+{
+  "city": "Nagpur",
+  "date": "2026-04-13",
+  "risk_level": 1,
+  "risk_label": "Moderate",
+  "emoji": "\ud83d\udfe1",
+  "composite_score": 26.1,
+  "confidence": 100.0,
+  "probabilities": {
+    "Low": 0.0,
+    "Moderate": 100.0,
+    "High": 0.0,
+    "Severe": 0.0
+  },
+  "heat_index": 62.9,
+  "humidex": 32.3,
+  "consec_hot_days": 40,
+  "active_compounds": [],
+  "advisory": "Moderate heat. Stay hydrated. Avoid peak sun (12\u20134 PM). Monitor elderly & children.",
+  "raw_obs": {
+    "date": "2026-04-13",
+    "temp_max": 37.9,
+    "temp_min": 21.7,
+    "humidity": 71,
+    "wind": 10.8,
+    "rainfall": 0,
+    "aqi": 54.0
+  },
+  "aqi_source": "Open-Meteo AQ (free)"
+}
