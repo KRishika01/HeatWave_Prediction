@@ -2,12 +2,12 @@
   "risk_level": 1,
   "risk_label": "Moderate",
   "emoji": "\ud83d\udfe1",
-  "confidence": 83.3,
+  "confidence": 96.9,
   "probabilities": {
-    "Low": 3.0,
-    "Moderate": 83.3,
-    "High": 13.4,
-    "Severe": 0.3
+    "Low": 1.1,
+    "Moderate": 96.9,
+    "High": 1.9,
+    "Severe": 0.0
   },
   "composite_score": 45.1,
   "heat_index": 56.4,
