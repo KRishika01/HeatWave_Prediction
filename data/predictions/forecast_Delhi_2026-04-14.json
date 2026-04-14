@@ -1,0 +1,210 @@
+[
+  {
+    "days_ahead": 1,
+    "date": "2026-04-15",
+    "risk_level": 0,
+    "risk_label": "Low",
+    "emoji": "\ud83d\udfe2",
+    "composite_score": 30.6,
+    "raw_confidence": 95.0,
+    "adj_confidence": 95.0,
+    "decay_factor": 1.0,
+    "reliability": "High",
+    "probabilities": {
+      "Low": 95.0,
+      "Moderate": 3.0,
+      "High": 2.0,
+      "Severe": 0.0
+    },
+    "temp_max": 37.3,
+    "humidity": 49.0,
+    "aqi": 254.0,
+    "rainfall": 0.0,
+    "heat_index": 46.1,
+    "consec_hot_days": 40,
+    "active_compounds": [],
+    "aqi_is_forecast": true,
+    "city": "Delhi",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 2,
+    "date": "2026-04-16",
+    "risk_level": 1,
+    "risk_label": "Moderate",
+    "emoji": "\ud83d\udfe1",
+    "composite_score": 46.6,
+    "raw_confidence": 84.3,
+    "adj_confidence": 80.1,
+    "decay_factor": 0.95,
+    "reliability": "High",
+    "probabilities": {
+      "Low": 10.7,
+      "Moderate": 84.3,
+      "High": 5.0,
+      "Severe": 0.0
+    },
+    "temp_max": 38.5,
+    "humidity": 37.0,
+    "aqi": 167.0,
+    "rainfall": 0.0,
+    "heat_index": 43.2,
+    "consec_hot_days": 41,
+    "active_compounds": [],
+    "aqi_is_forecast": true,
+    "city": "Delhi",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 3,
+    "date": "2026-04-17",
+    "risk_level": 1,
+    "risk_label": "Moderate",
+    "emoji": "\ud83d\udfe1",
+    "composite_score": 47.7,
+    "raw_confidence": 87.0,
+    "adj_confidence": 76.5,
+    "decay_factor": 0.88,
+    "reliability": "Medium",
+    "probabilities": {
+      "Low": 6.7,
+      "Moderate": 87.0,
+      "High": 6.3,
+      "Severe": 0.0
+    },
+    "temp_max": 39.1,
+    "humidity": 47.0,
+    "aqi": 136.0,
+    "rainfall": 0.3,
+    "heat_index": 50.0,
+    "consec_hot_days": 42,
+    "active_compounds": [
+      "Heat+Drought"
+    ],
+    "aqi_is_forecast": true,
+    "city": "Delhi",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 4,
+    "date": "2026-04-18",
+    "risk_level": 1,
+    "risk_label": "Moderate",
+    "emoji": "\ud83d\udfe1",
+    "composite_score": 49.9,
+    "raw_confidence": 91.3,
+    "adj_confidence": 73.0,
+    "decay_factor": 0.8,
+    "reliability": "Medium",
+    "probabilities": {
+      "Low": 3.1,
+      "Moderate": 91.3,
+      "High": 5.7,
+      "Severe": 0.0
+    },
+    "temp_max": 38.3,
+    "humidity": 57.0,
+    "aqi": 166.0,
+    "rainfall": 0.0,
+    "heat_index": 54.0,
+    "consec_hot_days": 43,
+    "active_compounds": [
+      "Heat+Drought",
+      "Triple"
+    ],
+    "aqi_is_forecast": true,
+    "city": "Delhi",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 5,
+    "date": "2026-04-19",
+    "risk_level": 1,
+    "risk_label": "Moderate",
+    "emoji": "\ud83d\udfe1",
+    "composite_score": 44.9,
+    "raw_confidence": 88.3,
+    "adj_confidence": 63.6,
+    "decay_factor": 0.72,
+    "reliability": "Low",
+    "probabilities": {
+      "Low": 6.4,
+      "Moderate": 88.3,
+      "High": 5.3,
+      "Severe": 0.0
+    },
+    "temp_max": 38.8,
+    "humidity": 48.0,
+    "aqi": 0.0,
+    "rainfall": 0.0,
+    "heat_index": 49.7,
+    "consec_hot_days": 44,
+    "active_compounds": [
+      "Heat+Drought"
+    ],
+    "aqi_is_forecast": true,
+    "city": "Delhi",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 6,
+    "date": "2026-04-20",
+    "risk_level": 1,
+    "risk_label": "Moderate",
+    "emoji": "\ud83d\udfe1",
+    "composite_score": 45.2,
+    "raw_confidence": 89.0,
+    "adj_confidence": 56.9,
+    "decay_factor": 0.64,
+    "reliability": "Low",
+    "probabilities": {
+      "Low": 6.0,
+      "Moderate": 89.0,
+      "High": 5.0,
+      "Severe": 0.0
+    },
+    "temp_max": 38.9,
+    "humidity": 50.0,
+    "aqi": 0.0,
+    "rainfall": 0.0,
+    "heat_index": 51.3,
+    "consec_hot_days": 45,
+    "active_compounds": [
+      "Heat+Drought"
+    ],
+    "aqi_is_forecast": false,
+    "city": "Delhi",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 7,
+    "date": "2026-04-21",
+    "risk_level": 2,
+    "risk_label": "High",
+    "emoji": "\ud83d\udfe0",
+    "composite_score": 68.0,
+    "raw_confidence": 95.0,
+    "adj_confidence": 53.2,
+    "decay_factor": 0.56,
+    "reliability": "Low",
+    "probabilities": {
+      "Low": 0.3,
+      "Moderate": 4.0,
+      "High": 95.0,
+      "Severe": 0.7
+    },
+    "temp_max": 40.3,
+    "humidity": 51.0,
+    "aqi": 161.0,
+    "rainfall": 0.0,
+    "heat_index": 56.5,
+    "consec_hot_days": 1,
+    "active_compounds": [
+      "Heat+Drought",
+      "Triple"
+    ],
+    "aqi_is_forecast": false,
+    "city": "Delhi",
+    "aqi_source": "seasonal_avg"
+  }
+]

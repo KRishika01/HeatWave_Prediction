@@ -14,3 +14,4 @@ folium>=0.15.0
 streamlit-folium>=0.15.0
 twilio>=8.0.0
 python-dotenv>=1.0.0
+torch>=2.0.0

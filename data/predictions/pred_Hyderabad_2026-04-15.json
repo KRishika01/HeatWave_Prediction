@@ -4,26 +4,24 @@
   "risk_level": 2,
   "risk_label": "High",
   "emoji": "\ud83d\udfe0",
-  "composite_score": 62.0,
-  "confidence": 99.7,
+  "composite_score": 63.5,
+  "confidence": 87.3,
   "probabilities": {
-    "Low": 0.1,
-    "Moderate": 0.2,
-    "High": 99.7
+    "Low": 3.3,
+    "Moderate": 9.3,
+    "High": 87.3
   },
-  "heat_index": 64.8,
-  "humidex": 34.5,
+  "heat_index": 60.9,
+  "humidex": 34.6,
   "consec_hot_days": 1,
-  "active_compounds": [
-    "Heat + Humidity"
-  ],
+  "active_compounds": [],
   "advisory": "HIGH HEAT RISK. Limit outdoor activity. Seek cool shelter. Watch for heat exhaustion.",
   "raw_obs": {
     "date": "2026-04-15",
-    "temp_max": 40.1,
-    "temp_min": 27.1,
-    "humidity": 62,
-    "wind": 10.8,
+    "temp_max": 40.2,
+    "temp_min": 27.5,
+    "humidity": 57,
+    "wind": 10.5,
     "rainfall": 0,
     "aqi": 46.0
   },

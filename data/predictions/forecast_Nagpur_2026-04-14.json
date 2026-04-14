@@ -1,0 +1,213 @@
+[
+  {
+    "days_ahead": 1,
+    "date": "2026-04-15",
+    "risk_level": 2,
+    "risk_label": "High",
+    "emoji": "\ud83d\udfe0",
+    "composite_score": 63.9,
+    "raw_confidence": 96.7,
+    "adj_confidence": 96.7,
+    "decay_factor": 1.0,
+    "reliability": "High",
+    "probabilities": {
+      "Low": 1.3,
+      "Moderate": 1.6,
+      "High": 96.7,
+      "Severe": 0.3
+    },
+    "temp_max": 40.5,
+    "humidity": 53.0,
+    "aqi": 32.0,
+    "rainfall": 0.0,
+    "heat_index": 58.8,
+    "consec_hot_days": 1,
+    "active_compounds": [
+      "Heat+Drought"
+    ],
+    "aqi_is_forecast": true,
+    "city": "Nagpur",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 2,
+    "date": "2026-04-16",
+    "risk_level": 2,
+    "risk_label": "High",
+    "emoji": "\ud83d\udfe0",
+    "composite_score": 56.1,
+    "raw_confidence": 66.3,
+    "adj_confidence": 63.0,
+    "decay_factor": 0.95,
+    "reliability": "High",
+    "probabilities": {
+      "Low": 3.0,
+      "Moderate": 30.3,
+      "High": 66.3,
+      "Severe": 0.3
+    },
+    "temp_max": 40.0,
+    "humidity": 50.0,
+    "aqi": 34.0,
+    "rainfall": 0.0,
+    "heat_index": 54.8,
+    "consec_hot_days": 2,
+    "active_compounds": [
+      "Heat+Drought"
+    ],
+    "aqi_is_forecast": true,
+    "city": "Nagpur",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 3,
+    "date": "2026-04-17",
+    "risk_level": 2,
+    "risk_label": "High",
+    "emoji": "\ud83d\udfe0",
+    "composite_score": 64.0,
+    "raw_confidence": 96.7,
+    "adj_confidence": 85.1,
+    "decay_factor": 0.88,
+    "reliability": "Medium",
+    "probabilities": {
+      "Low": 1.7,
+      "Moderate": 1.3,
+      "High": 96.7,
+      "Severe": 0.3
+    },
+    "temp_max": 40.4,
+    "humidity": 51.0,
+    "aqi": 41.0,
+    "rainfall": 0.0,
+    "heat_index": 56.8,
+    "consec_hot_days": 3,
+    "active_compounds": [
+      "Heat+Drought"
+    ],
+    "aqi_is_forecast": true,
+    "city": "Nagpur",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 4,
+    "date": "2026-04-18",
+    "risk_level": 2,
+    "risk_label": "High",
+    "emoji": "\ud83d\udfe0",
+    "composite_score": 64.2,
+    "raw_confidence": 97.0,
+    "adj_confidence": 77.6,
+    "decay_factor": 0.8,
+    "reliability": "Medium",
+    "probabilities": {
+      "Low": 0.7,
+      "Moderate": 1.7,
+      "High": 97.0,
+      "Severe": 0.7
+    },
+    "temp_max": 41.1,
+    "humidity": 47.0,
+    "aqi": 42.0,
+    "rainfall": 0.0,
+    "heat_index": 56.1,
+    "consec_hot_days": 4,
+    "active_compounds": [
+      "Heat+Drought"
+    ],
+    "aqi_is_forecast": true,
+    "city": "Nagpur",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 5,
+    "date": "2026-04-19",
+    "risk_level": 2,
+    "risk_label": "High",
+    "emoji": "\ud83d\udfe0",
+    "composite_score": 64.4,
+    "raw_confidence": 97.7,
+    "adj_confidence": 70.3,
+    "decay_factor": 0.72,
+    "reliability": "Low",
+    "probabilities": {
+      "Low": 0.7,
+      "Moderate": 1.0,
+      "High": 97.7,
+      "Severe": 0.7
+    },
+    "temp_max": 41.2,
+    "humidity": 43.0,
+    "aqi": 0.0,
+    "rainfall": 0.0,
+    "heat_index": 53.5,
+    "consec_hot_days": 5,
+    "active_compounds": [
+      "Heat+Drought"
+    ],
+    "aqi_is_forecast": true,
+    "city": "Nagpur",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 6,
+    "date": "2026-04-20",
+    "risk_level": 2,
+    "risk_label": "High",
+    "emoji": "\ud83d\udfe0",
+    "composite_score": 56.5,
+    "raw_confidence": 63.3,
+    "adj_confidence": 40.5,
+    "decay_factor": 0.64,
+    "reliability": "Low",
+    "probabilities": {
+      "Low": 2.3,
+      "Moderate": 34.3,
+      "High": 63.3,
+      "Severe": 0.0
+    },
+    "temp_max": 40.0,
+    "humidity": 46.0,
+    "aqi": 0.0,
+    "rainfall": 0.0,
+    "heat_index": 52.0,
+    "consec_hot_days": 6,
+    "active_compounds": [
+      "Heat+Drought"
+    ],
+    "aqi_is_forecast": false,
+    "city": "Nagpur",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 7,
+    "date": "2026-04-21",
+    "risk_level": 2,
+    "risk_label": "High",
+    "emoji": "\ud83d\udfe0",
+    "composite_score": 68.3,
+    "raw_confidence": 95.7,
+    "adj_confidence": 53.6,
+    "decay_factor": 0.56,
+    "reliability": "Low",
+    "probabilities": {
+      "Low": 1.3,
+      "Moderate": 2.3,
+      "High": 95.7,
+      "Severe": 0.7
+    },
+    "temp_max": 40.6,
+    "humidity": 58.0,
+    "aqi": 150.0,
+    "rainfall": 0.0,
+    "heat_index": 63.3,
+    "consec_hot_days": 7,
+    "active_compounds": [
+      "Heat+Drought",
+      "Triple"
+    ],
+    "aqi_is_forecast": false,
+    "city": "Nagpur",
+    "aqi_source": "seasonal_avg"
+  }
+]

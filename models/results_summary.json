@@ -1,9 +1,9 @@
 {
   "all": {
     "LogisticRegression": {
-      "Accuracy": 0.9741,
-      "Macro F1": 0.922,
-      "Weighted F1": 0.9754,
+      "Accuracy": 0.9736,
+      "Macro F1": 0.9188,
+      "Weighted F1": 0.9749,
       "ROC-AUC": 0.9991
     },
     "RandomForest": {
@@ -25,9 +25,9 @@
       "ROC-AUC": 1.0
     },
     "Ensemble": {
-      "Accuracy": 0.9985,
-      "Macro F1": 0.9909,
-      "Weighted F1": 0.9985,
+      "Accuracy": 0.999,
+      "Macro F1": 0.9948,
+      "Weighted F1": 0.999,
       "ROC-AUC": 1.0
     }
   },
@@ -65,9 +65,9 @@
   },
   "Hyderabad": {
     "LogisticRegression": {
-      "Accuracy": 0.9772,
-      "Macro F1": 0.9373,
-      "Weighted F1": 0.9779,
+      "Accuracy": 0.9787,
+      "Macro F1": 0.9434,
+      "Weighted F1": 0.9794,
       "ROC-AUC": 0.9989
     },
     "RandomForest": {
@@ -77,9 +77,9 @@
       "ROC-AUC": 1.0
     },
     "XGBoost": {
-      "Accuracy": 0.997,
-      "Macro F1": 0.9902,
-      "Weighted F1": 0.9969,
+      "Accuracy": 0.9985,
+      "Macro F1": 0.9964,
+      "Weighted F1": 0.9985,
       "ROC-AUC": 1.0
     },
     "LightGBM": {
@@ -97,10 +97,10 @@
   },
   "Nagpur": {
     "LogisticRegression": {
-      "Accuracy": 0.9696,
-      "Macro F1": 0.9028,
-      "Weighted F1": 0.9712,
-      "ROC-AUC": 0.999
+      "Accuracy": 0.9711,
+      "Macro F1": 0.9058,
+      "Weighted F1": 0.9725,
+      "ROC-AUC": 0.9989
     },
     "RandomForest": {
       "Accuracy": 0.9985,
@@ -118,7 +118,7 @@
       "Accuracy": 0.997,
       "Macro F1": 0.9907,
       "Weighted F1": 0.997,
-      "ROC-AUC": 0.9994
+      "ROC-AUC": 0.9995
     },
     "Ensemble": {
       "Accuracy": 0.997,

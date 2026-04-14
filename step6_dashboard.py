@@ -2392,7 +2392,7 @@ else:
 # PAGE 1: LIVE PREDICTION
 # ════════════════════════════════════════════════════════════════════════
 if "Live" in page:
-    st.title("🔴 Live & 7-Day Forecas")
+    st.title("🔴 Live & 7-Day Forecast")
     pred_mode = st.radio("Select Prediction Mode", ["Live Prediction (Today/Tomorrow)", "7-Day Forecast"], horizontal=True)
     st.markdown("---")
     if "Live Prediction" in pred_mode:

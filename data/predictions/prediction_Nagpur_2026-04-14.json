@@ -2,16 +2,16 @@
   "risk_level": 1,
   "risk_label": "Moderate",
   "emoji": "\ud83d\udfe1",
-  "confidence": 96.9,
+  "confidence": 65.6,
   "probabilities": {
-    "Low": 1.1,
-    "Moderate": 96.9,
-    "High": 1.9,
+    "Low": 6.3,
+    "Moderate": 65.6,
+    "High": 28.0,
     "Severe": 0.0
   },
-  "composite_score": 45.1,
-  "heat_index": 56.4,
-  "humidex": 33.6,
+  "composite_score": 45.0,
+  "heat_index": 57.9,
+  "humidex": 34.0,
   "consec_hot_days": 40,
   "active_compounds": [
     "Heat + Drought"
@@ -22,7 +22,7 @@
   "is_forecast": false,
   "raw_obs": {
     "date": "2026-04-14",
-    "temp_max": 39.2,
+    "temp_max": 39.6,
     "temp_min": 25.5,
     "humidity": 56,
     "wind": 5.7,

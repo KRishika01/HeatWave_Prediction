@@ -1,0 +1,1 @@
+{"window_size": 14, "feature_cols": ["temp_max", "temp_min", "humidity", "wind", "rainfall", "aqi", "heat_index", "humidex", "temp_range", "temp_mean", "feels_like_excess", "wind_heat_ratio", "temp_max_roll7", "humidity_roll7", "aqi_roll7", "rainfall_roll7", "consec_hot_days", "is_summer"], "hidden_size": 64, "num_layers": 2}

@@ -1,0 +1,203 @@
+[
+  {
+    "days_ahead": 1,
+    "date": "2026-04-15",
+    "risk_level": 2,
+    "risk_label": "High",
+    "emoji": "\ud83d\udfe0",
+    "composite_score": 63.6,
+    "raw_confidence": 87.3,
+    "adj_confidence": 87.3,
+    "decay_factor": 1.0,
+    "reliability": "High",
+    "probabilities": {
+      "Low": 3.0,
+      "Moderate": 9.7,
+      "High": 87.3
+    },
+    "temp_max": 40.2,
+    "humidity": 57.0,
+    "aqi": 46.0,
+    "rainfall": 0.0,
+    "heat_index": 60.9,
+    "consec_hot_days": 1,
+    "active_compounds": [
+      "Heat+Drought"
+    ],
+    "aqi_is_forecast": true,
+    "city": "Hyderabad",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 2,
+    "date": "2026-04-16",
+    "risk_level": 2,
+    "risk_label": "High",
+    "emoji": "\ud83d\udfe0",
+    "composite_score": 63.6,
+    "raw_confidence": 88.3,
+    "adj_confidence": 83.9,
+    "decay_factor": 0.95,
+    "reliability": "High",
+    "probabilities": {
+      "Low": 3.0,
+      "Moderate": 8.7,
+      "High": 88.3
+    },
+    "temp_max": 40.1,
+    "humidity": 60.0,
+    "aqi": 48.0,
+    "rainfall": 0.0,
+    "heat_index": 63.1,
+    "consec_hot_days": 2,
+    "active_compounds": [
+      "Heat+Drought",
+      "Heat+Humidity"
+    ],
+    "aqi_is_forecast": true,
+    "city": "Hyderabad",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 3,
+    "date": "2026-04-17",
+    "risk_level": 1,
+    "risk_label": "Moderate",
+    "emoji": "\ud83d\udfe1",
+    "composite_score": 45.4,
+    "raw_confidence": 78.0,
+    "adj_confidence": 68.6,
+    "decay_factor": 0.88,
+    "reliability": "Medium",
+    "probabilities": {
+      "Low": 13.0,
+      "Moderate": 78.0,
+      "High": 9.0
+    },
+    "temp_max": 39.0,
+    "humidity": 58.0,
+    "aqi": 53.0,
+    "rainfall": 0.5,
+    "heat_index": 57.2,
+    "consec_hot_days": 0,
+    "active_compounds": [
+      "Heat+Drought"
+    ],
+    "aqi_is_forecast": true,
+    "city": "Hyderabad",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 4,
+    "date": "2026-04-18",
+    "risk_level": 1,
+    "risk_label": "Moderate",
+    "emoji": "\ud83d\udfe1",
+    "composite_score": 45.3,
+    "raw_confidence": 78.7,
+    "adj_confidence": 62.9,
+    "decay_factor": 0.8,
+    "reliability": "Medium",
+    "probabilities": {
+      "Low": 12.0,
+      "Moderate": 78.7,
+      "High": 9.3
+    },
+    "temp_max": 39.6,
+    "humidity": 63.0,
+    "aqi": 49.0,
+    "rainfall": 0.9,
+    "heat_index": 63.6,
+    "consec_hot_days": 1,
+    "active_compounds": [
+      "Heat+Drought",
+      "Heat+Humidity"
+    ],
+    "aqi_is_forecast": true,
+    "city": "Hyderabad",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 5,
+    "date": "2026-04-19",
+    "risk_level": 1,
+    "risk_label": "Moderate",
+    "emoji": "\ud83d\udfe1",
+    "composite_score": 40.3,
+    "raw_confidence": 77.0,
+    "adj_confidence": 55.4,
+    "decay_factor": 0.72,
+    "reliability": "Low",
+    "probabilities": {
+      "Low": 11.3,
+      "Moderate": 77.0,
+      "High": 11.7
+    },
+    "temp_max": 39.8,
+    "humidity": 56.0,
+    "aqi": 0.0,
+    "rainfall": 0.6,
+    "heat_index": 58.6,
+    "consec_hot_days": 2,
+    "active_compounds": [],
+    "aqi_is_forecast": true,
+    "city": "Hyderabad",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 6,
+    "date": "2026-04-20",
+    "risk_level": 1,
+    "risk_label": "Moderate",
+    "emoji": "\ud83d\udfe1",
+    "composite_score": 40.3,
+    "raw_confidence": 78.7,
+    "adj_confidence": 50.3,
+    "decay_factor": 0.64,
+    "reliability": "Low",
+    "probabilities": {
+      "Low": 13.0,
+      "Moderate": 78.7,
+      "High": 8.3
+    },
+    "temp_max": 38.8,
+    "humidity": 63.0,
+    "aqi": 0.0,
+    "rainfall": 0.0,
+    "heat_index": 60.3,
+    "consec_hot_days": 3,
+    "active_compounds": [
+      "Heat+Humidity"
+    ],
+    "aqi_is_forecast": false,
+    "city": "Hyderabad",
+    "aqi_source": "forecast"
+  },
+  {
+    "days_ahead": 7,
+    "date": "2026-04-21",
+    "risk_level": 1,
+    "risk_label": "Moderate",
+    "emoji": "\ud83d\udfe1",
+    "composite_score": 44.3,
+    "raw_confidence": 82.0,
+    "adj_confidence": 45.9,
+    "decay_factor": 0.56,
+    "reliability": "Low",
+    "probabilities": {
+      "Low": 10.7,
+      "Moderate": 82.0,
+      "High": 7.3
+    },
+    "temp_max": 39.6,
+    "humidity": 55.0,
+    "aqi": 88.0,
+    "rainfall": 0.0,
+    "heat_index": 57.1,
+    "consec_hot_days": 4,
+    "active_compounds": [],
+    "aqi_is_forecast": false,
+    "city": "Hyderabad",
+    "aqi_source": "seasonal_avg"
+  }
+]
