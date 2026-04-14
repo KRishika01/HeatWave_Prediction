@@ -5054,27 +5054,39 @@ elif "Overview" in page:
         st.error("No data found. Run steps 1–4 first.")
         st.stop()
 
-    # Latest reading cards
-    st.subheader("Most Recent Reading per City")
+    # Worst Recorded Day cards
+    st.subheader("Worst Recorded Day (Highest Risk) per City")
     cols = st.columns(3)
-    for col, city in zip(cols, CITIES):
-        latest = df_all[df_all["city"]==city].dropna(subset=["risk_label"]).iloc[-1]
-        risk   = latest["risk_label"]
-        col.markdown(f"""
-        <div class="risk-card risk-{risk.upper()}">
-          <div style="font-size:1.2rem;font-weight:700">{city}</div>
-          <div style="font-size:2.4rem">{{"Low":"🟢","Moderate":"🟡","High":"🟠","Severe":"🔴"}}.get("{risk}","⚪")</div>
-          <div class="metric-big">{risk}</div>
-          <div class="metric-sub">Score: {latest['composite_score']:.0f} / 100</div>
-          <hr>
-          <div>🌡 {latest['temp_max']:.1f}°C &nbsp;|&nbsp; AQI {latest['aqi']:.0f}</div>
-          <div>📅 {latest['date'].strftime('%d %b %Y')}</div>
-        </div>""", unsafe_allow_html=True)
+    if df_view is not None and not df_view.empty:
+        for col, city in zip(cols, CITIES):
+            sub_df = df_view[df_view["city"]==city].dropna(subset=["risk_label", "composite_score"])
+            if sub_df.empty:
+                sub_df = df_view[df_view["city"]==city].dropna(subset=["risk_label"])
+                if sub_df.empty: continue
+                worst_day = sub_df.sort_values(by="temp_max", ascending=False).iloc[0]
+            else:
+                worst_day = sub_df.sort_values(by="composite_score", ascending=False).iloc[0]
+            
+            risk   = worst_day["risk_label"]
+            emoji  = {"Low":"🟢","Moderate":"🟡","High":"🟠","Severe":"🔴"}.get(risk, "⚪")
+            score_txt = f"{worst_day['composite_score']:.0f} / 100" if pd.notna(worst_day.get('composite_score')) else "N/A"
+            col.markdown(f"""
+            <div class="risk-card risk-{str(risk).upper()}">
+              <div style="font-size:1.2rem;font-weight:700">{city}</div>
+              <div style="font-size:2.4rem">{emoji}</div>
+              <div class="metric-big">{risk}</div>
+              <div class="metric-sub">Peak Score: {score_txt}</div>
+              <hr>
+              <div>🌡 {worst_day['temp_max']:.0f}°C &nbsp;|&nbsp; AQI {worst_day['aqi']:.0f}</div>
+              <div>📅 {worst_day['date'].strftime('%d %b %Y')}</div>
+            </div>""", unsafe_allow_html=True)
+    else:
+        st.warning("No data found in the selected date range.")
 
     st.markdown("---")
 
     # KPI row
-    if df_view is not None:
+    if df_view is not None and not df_view.empty:
         m1,m2,m3,m4,m5 = st.columns(5)
         m1.metric("Severe Days",       int((df_view["risk_level"]==3).sum()))
         m2.metric("High Risk Days",    int((df_view["risk_level"]==2).sum()))
@@ -5082,16 +5094,36 @@ elif "Overview" in page:
         m4.metric("Avg Score",         f"{df_view['composite_score'].mean():.1f}")
         m5.metric("Max Temp Recorded", f"{df_view['temp_max'].max():.1f}°C")
 
-        # Score timeline
-        fig = px.line(df_view, x="date", y="composite_score", color="city",
-                      color_discrete_map=CITY_COLORS,
-                      title="Composite Risk Score — Historical")
-        fig.add_hline(y=50, line_dash="dot", line_color="orange",
-                      annotation_text="High threshold (50)")
-        fig.add_hline(y=75, line_dash="dot", line_color="red",
-                      annotation_text="Severe threshold (75)")
-        fig.update_layout(height=380, legend=dict(orientation="h",y=-0.15))
-        st.plotly_chart(fig, use_container_width=True)
+        c1, c2 = st.columns([2, 1])
+        with c1:
+            # Score timeline
+            fig = px.line(df_view, x="date", y="composite_score", color="city",
+                          color_discrete_map=CITY_COLORS,
+                          title="Composite Risk Score — Timeline")
+            fig.add_hline(y=50, line_dash="dot", line_color="orange",
+                          annotation_text="High (50)")
+            fig.add_hline(y=75, line_dash="dot", line_color="red",
+                          annotation_text="Severe (75)")
+            fig.update_layout(height=380, legend=dict(orientation="h",y=-0.15))
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with c2:
+            # Seasonality of dangerous days
+            high_sev = df_view[df_view["risk_level"] >= 2]
+            if not high_sev.empty:
+                month_counts = high_sev.groupby("month").size().reset_index(name="counts")
+                _mmap = {1:"Jan",2:"Feb",3:"Mar",4:"Apr",5:"May",6:"Jun",
+                         7:"Jul",8:"Aug",9:"Sep",10:"Oct",11:"Nov",12:"Dec"}
+                month_counts["month_name"] = month_counts["month"].map(_mmap)
+                month_counts = month_counts.sort_values("month")
+                fig2 = px.bar(month_counts, x="month_name", y="counts", 
+                              title="Dangerous Days By Month",
+                              labels={"month_name":"", "counts":"Days (High+Severe)"},
+                              color_discrete_sequence=["#E74C3C"])
+                fig2.update_layout(height=380)
+                st.plotly_chart(fig2, use_container_width=True)
+            else:
+                st.info("No High/Severe risk days in selection.")
 
 
 # ════════════════════════════════════════════════════════════════════════
