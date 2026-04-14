@@ -500,13 +500,81 @@ if __name__ == "__main__":
     print(f"\n  ★ Best method by Macro F1: {best_method}")
     print(f"    Weights: { {n: round(w,4) for n,w in zip(PILLAR_NAMES, best_w)} }")
 
-    # ── SAVE WEIGHTS ──────────────────────────────────────────────────
+    # ── INTERVAL OPTIMIZATION ─────────────────────────────────────────
+    from sklearn.tree import DecisionTreeClassifier
+    print("\n" + "="*65)
+    print("  INTERVAL / THRESHOLD OPTIMIZATION")
+    print("="*65)
+    
+    best_composite_scores = (pillars.values.astype(float) @ best_w)
+    y_true = imd_labels.values.astype(int)
+    
+    def eval_thresholds(t1, t2, t3):
+        pred = np.zeros(len(best_composite_scores), dtype=int)
+        pred[best_composite_scores >= t1] = 1
+        pred[best_composite_scores >= t2] = 2
+        pred[best_composite_scores >= t3] = 3
+        return f1_score(y_true, pred, average="macro", zero_division=0)
+
+    f1_default = eval_thresholds(25.0, 50.0, 75.0)
+    
+    # Grid Search
+    best_gs_f1 = -1
+    best_gs_thresh = (25.0, 50.0, 75.0)
+    for t1 in np.arange(15, 40, 1.0):
+        for t2 in np.arange(t1 + 5, 65, 1.0):
+            for t3 in np.arange(t2 + 5, 90, 1.0):
+                f1 = eval_thresholds(t1, t2, t3)
+                if f1 > best_gs_f1:
+                    best_gs_f1 = f1
+                    best_gs_thresh = (t1, t2, t3)
+                    
+    gs_t1, gs_t2, gs_t3 = best_gs_thresh
+    
+    # Decision Tree
+    dt = DecisionTreeClassifier(max_depth=3, max_leaf_nodes=4, random_state=42)
+    dt.fit(best_composite_scores.reshape(-1, 1), y_true)
+    thresholds = np.sort(dt.tree_.threshold[dt.tree_.threshold != -2.0])
+    
+    if len(thresholds) >= 3:
+        dt_t1, dt_t2, dt_t3 = thresholds[:3]
+    else:
+        dt_t1, dt_t2, dt_t3 = 25.0, 50.0, 75.0
+        
+    f1_dt = eval_thresholds(dt_t1, dt_t2, dt_t3)
+    
+    print(f"  [Default]       Thresholds: 25.0, 50.0, 75.0      → Macro F1: {f1_default:.4f}")
+    if len(thresholds) >= 3:
+        print(f"  [Decision Tree] Thresholds: {dt_t1:.1f}, {dt_t2:.1f}, {dt_t3:.1f}      → Macro F1: {f1_dt:.4f}")
+    else:
+        print(f"  [Decision Tree] Did not find 3 valid splits.")
+    print(f"  [Grid Search]   Thresholds: {gs_t1:.1f}, {gs_t2:.1f}, {gs_t3:.1f}      → Macro F1: {best_gs_f1:.4f}")
+
+    best_thresh = [25.0, 50.0, 75.0]
+    best_interval_method = "Default"
+    best_interval_f1 = f1_default
+    
+    if len(thresholds) >= 3 and f1_dt > best_interval_f1:
+        best_interval_f1 = f1_dt
+        best_thresh = [float(dt_t1), float(dt_t2), float(dt_t3)]
+        best_interval_method = "Decision Tree"
+        
+    if best_gs_f1 > best_interval_f1:
+        best_interval_f1 = best_gs_f1
+        best_thresh = [float(gs_t1), float(gs_t2), float(gs_t3)]
+        best_interval_method = "Grid Search"
+        
+    print(f"\n  ★ Optimal Thresholds ({best_interval_method}): {best_thresh[0]:.1f}, {best_thresh[1]:.1f}, {best_thresh[2]:.1f}")
+
+    # ── SAVE WEIGHTS & INTERVALS ──────────────────────────────────────
     weights_out = {
         "best_method"  : best_method,
         "pillar_names" : PILLAR_NAMES,
         "all_weights"  : {m: w.tolist() for m, w in all_weights.items()},
         "evaluations"  : evaluations,
         "best_weights" : best_w.tolist(),
+        "optimal_intervals": best_thresh,
+        "interval_method": best_interval_method
     }
     out_path = os.path.join(PROC_DIR, "optimal_weights.json")
     with open(out_path, "w") as f:

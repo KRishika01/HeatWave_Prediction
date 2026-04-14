@@ -658,6 +658,13 @@ from datetime import datetime, timedelta, date
 import warnings
 warnings.filterwarnings("ignore")
 
+# --- ALERT SYSTEM INTEGRATION ---
+try:
+    from alert_system import SMSAlertSystem
+    alert_manager = SMSAlertSystem(threshold_risk=1) # Alert for Moderate/High/Severe
+except ImportError:
+    alert_manager = None
+
 # ── CONFIG ───────────────────────────────────────────────────────────────
 
 # !! SET YOUR KEYS HERE (or pass via environment variables) !!
@@ -1224,6 +1231,10 @@ def run_city_prediction(city: str, target_date: date = None,
         with open(log_path, "w") as f:
             json.dump(result, f, indent=2, default=str)
         print(f"\n  [✓] Prediction saved → {log_path}")
+
+    # ── 8. Trigger SMS Alert ───────────────────────────────────────────
+    if alert_manager:
+        alert_manager.send_alert(city, result)
 
     return result
 

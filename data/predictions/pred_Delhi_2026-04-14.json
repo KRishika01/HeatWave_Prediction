@@ -4,7 +4,7 @@
   "risk_level": 1,
   "risk_label": "Moderate",
   "emoji": "\ud83d\udfe1",
-  "composite_score": 28.4,
+  "composite_score": 28.3,
   "confidence": 99.9,
   "probabilities": {
     "Low": 0.0,
@@ -20,9 +20,9 @@
   "raw_obs": {
     "date": "2026-04-14",
     "temp_max": 36.2,
-    "temp_min": 21.8,
+    "temp_min": 22.7,
     "humidity": 55,
-    "wind": 7.6,
+    "wind": 7.2,
     "rainfall": 0,
     "aqi": 177.0
   },

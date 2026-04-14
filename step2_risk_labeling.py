@@ -228,15 +228,19 @@ if os.path.exists(_weights_path):
         _wdata = json.load(_f)
     _w = _wdata["best_weights"]
     W_TEMP, W_HI, W_AQI, W_DROUGHT, W_COMPOUND = _w
+    RISK_INTERVALS = _wdata.get("optimal_intervals", [25.0, 50.0, 75.0])
     print(f"[step2] Optimal weights loaded (method: {_wdata['best_method']})")
     print(f"        T={W_TEMP:.4f}  HI={W_HI:.4f}  AQI={W_AQI:.4f}  "
           f"Drought={W_DROUGHT:.4f}  Compound={W_COMPOUND:.4f}")
+    if "optimal_intervals" in _wdata:
+        print(f"        Intervals [{_wdata.get('interval_method')}] : {RISK_INTERVALS}")
 else:
     W_TEMP    = 0.35
     W_HI      = 0.25
     W_AQI     = 0.20
     W_DROUGHT = 0.10
     W_COMPOUND= 0.10
+    RISK_INTERVALS = [25.0, 50.0, 75.0]
     print("[step2] Using manual pillar weights (run step2b to optimise)")
 
 # ── SCORING HELPERS ──────────────────────────────────────────────────────
@@ -335,10 +339,12 @@ def assign_risk_labels(df: pd.DataFrame) -> pd.DataFrame:
     # Clip score to [0, 100] so no value falls outside bin edges
     # df["composite_score"] = df["composite_score"].clip(0, 100)
 
+    t1, t2, t3 = RISK_INTERVALS
     df["risk_level"] = pd.cut(
         df["composite_score"],
-        bins=[-0.1, 24.9, 49.9, 74.9, 100.1],
-        labels=[0, 1, 2, 3]
+        bins=[-np.inf, t1, t2, t3, np.inf],
+        labels=[0, 1, 2, 3],
+        right=False  # [a, b) behavior: >= left, < right
     )
     df["risk_level"] = df["risk_level"].astype(float).fillna(0).astype(int)
 
@@ -373,10 +379,7 @@ if __name__ == "__main__":
     Compound Risk Bonus    : 10%
 
   Risk Levels:
-    0 Low      → composite score  0–24
-    1 Moderate → composite score 25–49
-    2 High     → composite score 50–74
-    3 Severe   → composite score 75–100
+    Dynamically thresholds risk scores based on optimal intervals from step2b.
     """)
 
     labelled_dfs = []
