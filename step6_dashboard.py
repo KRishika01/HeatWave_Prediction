@@ -792,77 +792,43 @@ if "Live" in page:
                 fc_df = pd.DataFrame(fc_list)
                 fc_df["date"] = pd.to_datetime(fc_df["date"])
 
-                ch1, ch2 = st.columns(2)
+                # Composite score + confidence band
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=fc_df["date"], y=fc_df["composite_score"],
+                    name="Risk Score",
+                    line=dict(color=CITY_COLORS.get(city,"#3498DB"), width=2),
+                    mode="lines+markers",
+                ))
+                # Confidence band: score ± (1-decay)*score
+                fc_df["upper"] = fc_df["composite_score"] * (
+                    1 + (1 - fc_df["decay_factor"]) * 0.5)
+                fc_df["lower"] = fc_df["composite_score"] * (
+                    1 - (1 - fc_df["decay_factor"]) * 0.5)
 
-                with ch1:
-                    # Composite score + confidence band
-                    fig = go.Figure()
-                    fig.add_trace(go.Scatter(
-                        x=fc_df["date"], y=fc_df["composite_score"],
-                        name="Risk Score",
-                        line=dict(color=CITY_COLORS.get(city,"#3498DB"), width=2),
-                        mode="lines+markers",
-                    ))
-                    # Confidence band: score ± (1-decay)*score
-                    fc_df["upper"] = fc_df["composite_score"] * (
-                        1 + (1 - fc_df["decay_factor"]) * 0.5)
-                    fc_df["lower"] = fc_df["composite_score"] * (
-                        1 - (1 - fc_df["decay_factor"]) * 0.5)
-                    # fig.add_trace(go.Scatter(
-                    #     x=pd.concat([fc_df["date"], fc_df["date"][::-1]]),
-                    #     y=pd.concat([fc_df["upper"], fc_df["lower"][::-1]]),
-                    #     fill="toself",
-                    #     fillcolor=CITY_COLORS.get(city,"#3498DB") + "22",
-                    #     line=dict(color="rgba(0,0,0,0)"),
-                    #     name="Uncertainty band",
-                    # ))
-                    hex_color = CITY_COLORS.get(city, "#3498DB").lstrip("#")
-                    r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-                    fill_col = f"rgba({r}, {g}, {b}, 0.13)"
+                hex_color = CITY_COLORS.get(city, "#3498DB").lstrip("#")
+                r_val, g_val, b_val = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+                fill_col = f"rgba({r_val}, {g_val}, {b_val}, 0.13)"
 
-                    fig.add_trace(go.Scatter(
-                        x=pd.concat([fc_df["date"], fc_df["date"][::-1]]),
-                        y=pd.concat([fc_df["upper"], fc_df["lower"][::-1]]),
-                        fill="toself",
-                        fillcolor=fill_col,
-                        line=dict(color="rgba(0,0,0,0)"),
-                        name="Uncertainty band",
-                    ))
+                fig.add_trace(go.Scatter(
+                    x=pd.concat([fc_df["date"], fc_df["date"][::-1]]),
+                    y=pd.concat([fc_df["upper"], fc_df["lower"][::-1]]),
+                    fill="toself",
+                    fillcolor=fill_col,
+                    line=dict(color="rgba(0,0,0,0)"),
+                    name="Uncertainty band",
+                ))
 
-                    fig.add_hline(y=50, line_dash="dot",
-                                  line_color="orange", annotation_text="High (50)")
-                    fig.add_hline(y=75, line_dash="dot",
-                                  line_color="red", annotation_text="Severe (75)")
-                    fig.update_layout(
-                        title="Composite Risk Score + Uncertainty",
-                        height=300, margin=dict(l=0,r=0,t=40,b=0),
-                        legend=dict(orientation="h", y=-0.3),
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-
-                with ch2:
-                    # Temperature + AQI dual axis
-                    fig2 = make_subplots(specs=[[{"secondary_y": True}]])
-                    fig2.add_trace(go.Bar(
-                        x=fc_df["date"], y=fc_df["temp_max"],
-                        name="Tmax (°C)",
-                        marker_color=[RISK_COLORS[r] for r in fc_df["risk_level"]],
-                        opacity=0.8,
-                    ), secondary_y=False)
-                    fig2.add_trace(go.Scatter(
-                        x=fc_df["date"], y=fc_df["aqi"],
-                        name="AQI",
-                        line=dict(color="#8E44AD", width=2, dash="dot"),
-                        mode="lines+markers",
-                    ), secondary_y=True)
-                    fig2.update_yaxes(title_text="Tmax (°C)", secondary_y=False)
-                    fig2.update_yaxes(title_text="AQI",       secondary_y=True)
-                    fig2.update_layout(
-                        title="Temperature & AQI forecast",
-                        height=300, margin=dict(l=0,r=0,t=40,b=0),
-                        legend=dict(orientation="h", y=-0.3),
-                    )
-                    st.plotly_chart(fig2, use_container_width=True)
+                fig.add_hline(y=50, line_dash="dot",
+                              line_color="orange", annotation_text="High (50)")
+                fig.add_hline(y=75, line_dash="dot",
+                              line_color="red", annotation_text="Severe (75)")
+                fig.update_layout(
+                    title="Composite Risk Score + Uncertainty",
+                    height=350, margin=dict(l=0,r=0,t=40,b=0),
+                    legend=dict(orientation="h", y=-0.3),
+                )
+                st.plotly_chart(fig, use_container_width=True)
 
                 # ── Detailed table ────────────────────────────────────
                 with st.expander(f"📋 {city} — Full forecast table"):
@@ -1553,166 +1519,131 @@ elif "Compound" in page:
         else:
             st.info(f"Compound amplification: +{r['delta_total']:.1f} pts. "
                     f"Dominant stressor: **{r['dominant_stressor']}**. No risk-tier upgrade.")
+        
+        # ── Visual Breakdown: Waterfall | Gauge | Stressor ──────────────
+        v1, v2= st.columns(2)
 
-        # Radar + bar breakdown side by side
-        radar_c, bar_c = st.columns(2)
-        with radar_c:
-            fig_radar = go.Figure(go.Scatterpolar(
-                r=[r["I1_temp_only"], r["delta_humidity"],
-                   r["delta_aqi"], r["delta_synergy"], r["I4_full_compound"]],
-                theta=["Temp baseline","Humidity Δ","AQI Δ","Synergy Δ","Total (I4)"],
-                fill="toself",
-                fillcolor=risk_bd.get(r["label_I4"],"#E67E22"),
-                line_color=risk_bd.get(r["label_I4"],"#E67E22"),
-                name="Compound breakdown",
+        with v1:
+            # 1. Waterfall Chart - How final risk is formed
+            # We use individual colors for the bars to match the stressors
+            _base_color = risk_bd.get(r["label_I1"], "#F1C40F")
+            _final_color = risk_bd.get(r["label_I4"], "#E74C3C")
+            
+            fig_wf = go.Figure(go.Waterfall(
+                name = "Compound Risk Build-up",
+                orientation = "v",
+                measure = ["absolute", "relative", "relative", "relative", "total"],
+                x = ["Base Temp", "+Humidity", "+AQI", "+Synergy", "Final Risk"],
+                textposition = "outside",
+                text = [f"{v:.1f}" for v in [r["I1_temp_only"], r["delta_humidity"], r["delta_aqi"], r["delta_synergy"], r["I4_full_compound"]]],
+                y = [r["I1_temp_only"], r["delta_humidity"], r["delta_aqi"], r["delta_synergy"], r["I4_full_compound"]],
+                connector = {"line": {"color": "rgba(63, 63, 63, 0.5)", "width": 1, "dash": "dot"}},
+                increasing = {"marker": {"color": "#E74C3C"}}, # Red for additions
+                decreasing = {"marker": {"color": "#2ECC71"}},
+                totals = {"marker": {"color": _final_color}}
             ))
-            fig_radar.update_layout(
-                polar=dict(radialaxis=dict(range=[0,100], tickfont_size=9)),
-                title="Amplification breakdown (radar)",
-                height=300, margin=dict(l=0,r=0,t=40,b=0), showlegend=False)
-            st.plotly_chart(fig_radar, use_container_width=True)
+            fig_wf.update_layout(
+                title = "Waterfall: Risk Build-up",
+                height = 350,
+                margin = dict(l=20, r=20, t=50, b=20),
+                xaxis_tickfont_size=10,
+                showlegend = False
+            )
+            # Add horizontal threshold lines
+            for val, label, clr in [(25,"Mod","#F1C40F"), (50,"High","#E67E22"), (75,"Sev","#E74C3C")]:
+                fig_wf.add_hline(y=val, line_dash="dot", line_color=clr, opacity=0.5,
+                                 annotation_text=label, annotation_position="left")
+                                 
+            st.plotly_chart(fig_wf, use_container_width=True)
 
-        with bar_c:
-            fig_bar_d = go.Figure(go.Bar(
-                x=["Temp baseline","+Humidity","+AQI","+Synergy"],
-                y=[r["I1_temp_only"],r["delta_humidity"],r["delta_aqi"],r["delta_synergy"]],
-                marker_color=["#F1C40F","#3498DB","#E74C3C","#8E44AD"],
-                text=[f"{v:.1f}" for v in [r["I1_temp_only"],r["delta_humidity"],
-                                            r["delta_aqi"],r["delta_synergy"]]],
-                textposition="outside",
+        with v2:
+            # 2. Risk Forecast Gauge - Visual danger levels
+            val = r["I4_full_compound"]
+            label = r["label_I4"]
+            fig_gauge = go.Figure(go.Indicator(
+                mode = "gauge+number",
+                value = val,
+                domain = {'x': [0, 1], 'y': [0, 1]},
+                title = {'text': f"Current Risk: {label}", 'font': {'size': 18}},
+                gauge = {
+                    'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "darkblue"},
+                    'bar': {'color': risk_bd.get(label, "#333")},
+                    'bgcolor': "white",
+                    'borderwidth': 2,
+                    'bordercolor': "gray",
+                    'steps': [
+                        {'range': [0, 25], 'color': '#d5f5e3'},
+                        {'range': [25, 50], 'color': '#fef9e7'},
+                        {'range': [50, 75], 'color': '#fdebd0'},
+                        {'range': [75, 100], 'color': '#fadbd8'}
+                    ],
+                }
             ))
-            fig_bar_d.update_layout(
-                title="Stressor contributions",
-                yaxis_title="Score points",
-                height=300, margin=dict(l=0,r=0,t=40,b=0),
-                showlegend=False, yaxis_range=[0,110])
-            st.plotly_chart(fig_bar_d, use_container_width=True)
+            fig_gauge.update_layout(height=350, margin=dict(l=20, r=20, t=50, b=50))
+            st.plotly_chart(fig_gauge, use_container_width=True)
 
-    # ── SECTION 2: HISTORICAL COMPOUND ANALYSIS ───────────────────────
-    st.markdown("---")
-    st.subheader(f"📊 Historical Compound Intensity — {comp_city}")
-
-    comp_path = os.path.join(PROC_DIR, "compound_intensity_all.csv")
-    if os.path.exists(comp_path):
-        df_comp = pd.read_csv(comp_path, parse_dates=["date"])
-    elif df_all is not None:
-        with st.spinner("Computing compound intensity for historical data…"):
+        # with v3:
+        #     # 3. Stressor Contributions - Square format
+        #     _base_color = risk_bd.get(r["label_I1"], "#F1C40F")
+        #     fig_bar = go.Figure(go.Bar(
+        #         x=["Temp", "Hum", "AQI", "Syn"],
+        #         y=[r["I1_temp_only"], r["delta_humidity"], r["delta_aqi"], r["delta_synergy"]],
+        #         marker_color=[_base_color, "#3498DB", "#E74C3C", "#8E44AD"],
+        #         text=[f"{v:.1f}" for v in [r["I1_temp_only"], r["delta_humidity"], r["delta_aqi"], r["delta_synergy"]]],
+        #         textposition="outside",
+        #     ))
+        #     fig_bar.update_layout(
+        #         title="Stressor Pts",
+        #         height=350,
+        #         width=350,
+        #         xaxis_title="",
+        #         yaxis_title="Pts",
+        #         margin=dict(l=20, r=20, t=50, b=20),
+        #         showlegend=False,
+        #         yaxis_range=[0, max(110, r["I4_full_compound"] + 10)]
+        #     )
+        #     st.plotly_chart(fig_bar, use_container_width=True)
+            
+        # ── Historical Heatmap ────────────────────────────────────────────
+        st.markdown("---")
+        st.subheader(f"📅 Historical Compound Risk Seasonality — {comp_city}")
+        
+        comp_path = os.path.join(PROC_DIR, "compound_intensity_all.csv")
+        if os.path.exists(comp_path):
+            df_comp = pd.read_csv(comp_path, parse_dates=["date"])
+        elif df_all is not None:
+            # Re-compute if needed by importing logic from step11
             df_comp = _mod.compute_compound_for_dataset(df_all.copy())
             df_comp.to_csv(comp_path, index=False)
-    else:
-        st.warning("No historical data. Run steps 1–2 first.")
-        st.stop()
+        else:
+            df_comp = None
 
-    # Filter strictly by city selected at the top
-    sub_c = df_comp[df_comp["city"] == comp_city].copy()
-    if sub_c.empty:
-        st.warning(f"No compound data found for **{comp_city}**.")
-        st.stop()
-
-    # Summary metrics
-    s = _mod.compound_summary(df_comp, comp_city)
-    sm1, sm2, sm3, sm4, sm5 = st.columns(5)
-    sm1.metric("Days with compound upgrade", f"{s['days_compound_upgrade']}")
-    sm2.metric("% of all days upgraded",     f"{s['pct_compound_upgrade']}%")
-    sm3.metric("Avg Δ on hot days",           f"+{s['avg_delta_total_hot']:.1f}")
-    sm4.metric("Avg I1 (temp only)",          f"{s['avg_I1']:.1f}")
-    sm5.metric("Avg I4 (full compound)",      f"{s['avg_I4']:.1f}")
-
-    # Four intensity lines over time
-    h_sample = sub_c.sample(min(2000, len(sub_c))).sort_values("date")
-    fig_ts = go.Figure()
-    for ts_col, ts_name, ts_color, ts_dash in [
-        ("I1_temp_only",      "I1 Temp only",     "#F1C40F", "dot"),
-        ("I2_temp_humidity",  "I2 +Humidity",     "#E67E22", "dash"),
-        ("I3_temp_aqi",       "I3 +AQI",          "#E74C3C", "dashdot"),
-        ("I4_full_compound",  "I4 Full compound", "#8E44AD", "solid"),
-    ]:
-        fig_ts.add_trace(go.Scatter(
-            x=h_sample["date"], y=h_sample[ts_col],
-            name=ts_name, mode="lines",
-            line=dict(color=ts_color, width=1.2, dash=ts_dash)))
-    fig_ts.add_hline(y=50, line_dash="dot", line_color="gray",
-                     annotation_text="High threshold")
-    fig_ts.add_hline(y=75, line_dash="dot", line_color="red",
-                     annotation_text="Severe threshold")
-    fig_ts.update_layout(
-        title=f"{comp_city} — All four intensity levels over time",
-        height=380, margin=dict(l=0,r=0,t=40,b=0),
-        legend=dict(orientation="h", y=-0.15))
-    st.plotly_chart(fig_ts, use_container_width=True)
-
-    # I1 vs I4 scatter
-    fig_up = go.Figure()
-    fig_up.add_trace(go.Scatter(
-        x=sub_c["I1_temp_only"], y=sub_c["I4_full_compound"],
-        mode="markers",
-        marker=dict(
-            color=sub_c["tiers_gained"].map({0:"#2ECC71",1:"#E67E22",2:"#E74C3C"}),
-            size=4, opacity=0.5),
-        name="All days",
-    ))
-    fig_up.add_trace(go.Scatter(
-        x=[0,100], y=[0,100], mode="lines",
-        line=dict(color="gray", dash="dot", width=0.8),
-        name="No amplification line"))
-    fig_up.update_layout(
-        title="I1 (temp only) vs I4 (full compound) — dots above line = amplified",
-        xaxis_title="I1: Temperature-only intensity",
-        yaxis_title="I4: Full compound intensity",
-        height=340, margin=dict(l=0,r=0,t=40,b=0),
-        legend=dict(orientation="h", y=-0.2))
-    st.plotly_chart(fig_up, use_container_width=True)
-
-    # Monthly avg delta heatmap
-    sub_c["month"] = pd.to_datetime(sub_c["date"]).dt.month
-    sub_c["year"]  = pd.to_datetime(sub_c["date"]).dt.year
-    h_pivot = sub_c.pivot_table(index="year", columns="month",
-                                 values="delta_total", aggfunc="mean")
-    fig_hm = go.Figure(go.Heatmap(
-        z=h_pivot.values, x=h_pivot.columns, y=h_pivot.index,
-        colorscale="Reds", hoverongaps=False,
-        colorbar=dict(title="Avg Δ"),
-    ))
-    fig_hm.update_layout(
-        title=f"{comp_city} — Avg compound amplification by month/year",
-        xaxis=dict(tickmode="array", tickvals=list(range(1,13)),
-                   ticktext=["J","F","M","A","M","J","J","A","S","O","N","D"]),
-        height=280, margin=dict(l=0,r=0,t=40,b=0))
-    st.plotly_chart(fig_hm, use_container_width=True)
-
-    # ── Cross-city comparison ─────────────────────────────────────────
-    st.markdown("---")
-    st.subheader("🏙 Cross-City Compound Comparison")
-    all_summaries = [_mod.compound_summary(df_comp, c)
-                     for c in CITIES if c in df_comp["city"].values]
-    if all_summaries:
-        cmp_df = pd.DataFrame(all_summaries).set_index("city")
-        cmp_cols  = ["avg_I1","avg_I4","avg_delta_humidity_hot",
-                     "avg_delta_aqi_hot","avg_delta_total_hot","pct_compound_upgrade"]
-        nice_names = ["Avg I1","Avg I4","Avg Δ Humidity",
-                      "Avg Δ AQI","Avg Δ Total","% Days Upgraded"]
-        disp_df = cmp_df[cmp_cols].copy()
-        disp_df.columns = nice_names
-        st.dataframe(disp_df.style.background_gradient(
-            cmap="Reds", subset=["Avg Δ Total","% Days Upgraded"]),
-            use_container_width=True)
-
-        fig_cmp_bar = go.Figure()
-        for _c, _n, _clr in [
-            ("avg_delta_humidity_hot","Avg Δ Humidity","#3498DB"),
-            ("avg_delta_aqi_hot",     "Avg Δ AQI",    "#E74C3C"),
-            ("avg_delta_total_hot",   "Avg Δ Total",  "#8E44AD"),
-        ]:
-            fig_cmp_bar.add_trace(go.Bar(
-                x=cmp_df.index, y=cmp_df[_c],
-                name=_n, marker_color=_clr))
-        fig_cmp_bar.update_layout(
-            barmode="group",
-            title="Average compound amplification on hot days (Tmax ≥ 38°C)",
-            yaxis_title="Score points added",
-            height=300, margin=dict(l=0,r=0,t=40,b=0),
-            legend=dict(orientation="h", y=-0.2))
-        st.plotly_chart(fig_cmp_bar, use_container_width=True)
+        if df_comp is not None:
+            sub_c = df_comp[df_comp["city"] == comp_city]
+            if sub_c is not None and not sub_c.empty:
+                sub_c = sub_c.copy()
+                sub_c["month"] = pd.to_datetime(sub_c["date"]).dt.month
+                sub_c["year"]  = pd.to_datetime(sub_c["date"]).dt.year
+                h_pivot = sub_c.pivot_table(index="year", columns="month",
+                                             values="delta_total", aggfunc="mean")
+                fig_hm = go.Figure(go.Heatmap(
+                    z=h_pivot.values, x=h_pivot.columns, y=h_pivot.index,
+                    colorscale="Reds", hoverongaps=False,
+                    colorbar=dict(title="Avg Δ"),
+                ))
+                fig_hm.update_layout(
+                    title=f"{comp_city} — Avg compound amplification by month/year",
+                    xaxis={
+                        "tickmode": "array",
+                        "tickvals": list(range(1,13)),
+                        "ticktext": ["J","F","M","A","M","J","J","A","S","O","N","D"]
+                    },
+                    height=280, margin={"l":0,"r":0,"t":40,"b":0})
+                st.plotly_chart(fig_hm, use_container_width=True)
+            else:
+                st.info("No historical compound data found for this city.")
+        else:
+            st.warning("Historical data not available for heatmap.")
 
 elif "Overview" in page:
     st.title("🏠 Historical Risk Overview")
