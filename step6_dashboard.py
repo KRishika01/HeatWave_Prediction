@@ -481,13 +481,13 @@ with st.sidebar:
     st.markdown("---")
 
     page = st.radio("Navigation", [
-        "🔴 Live & 7-Day Forecast",
-        "📆 Monthly(Seasonal) Outlook",
-        "⚡ Compound Risk",
-        "🏠 Historical Overview",
-        "📈 Trends & Analysis",
-        "🔍 Manual Prediction",
-        "📋 Prediction Log",
+        "Live & 7-Day Forecast",
+        "Monthly(Seasonal) Outlook",
+        "Compound Risk",
+        "Historical Overview",
+        "Trends & Analysis",
+        "Manual Prediction",
+        "Prediction Log",
     ])
 
     st.markdown("---")
@@ -499,13 +499,13 @@ with st.sidebar:
     st.caption("New OWM keys take ~2h to activate.")
 
     st.markdown("---")
-    st.markdown("**Filters** *(historical pages)*")
+    st.markdown("**Filters**")
     sel_city   = st.selectbox("City", ["All"]+CITIES)
     try:
         date_range = st.date_input("Date Range",
-            value=(datetime(2020,1,1), datetime(2025,12,31)))
+            value=(datetime(2017,1,1), datetime(2025,12,31)))
     except Exception:
-        date_range = (datetime(2020,1,1), datetime(2025,12,31))
+        date_range = (datetime(2017,1,1), datetime(2025,12,31))
 
 
 df_all = load_all_data()
@@ -530,15 +530,15 @@ if "Live" in page:
     pred_mode = st.radio("Select Prediction Mode", ["Live Prediction (Today/Tomorrow)", "7-Day Forecast"], horizontal=True)
     st.markdown("---")
     if "Live Prediction" in pred_mode:
-        st.markdown("## 🔴 Live Prediction <span class='live-badge'>LIVE</span>",
-                    unsafe_allow_html=True)
-        st.caption("Fetches real weather & AQ data, runs ML model using your historical data as context.")
+        # st.markdown("## 🔴 Live Prediction <span class='live-badge'>LIVE</span>",
+        #             unsafe_allow_html=True)
+        # st.caption("Fetches real weather & AQ data, runs ML model using your historical data as context.")
 
         # Controls
         c1, c2, c3 = st.columns([2,2,3])
         with c1:
             live_cities = st.multiselect("Cities to predict",
-                                         CITIES, default=CITIES)
+                                         CITIES, default=[])
         with c2:
             predict_day = st.radio("Predict for", ["Today","Tomorrow"],
                                    horizontal=True)
@@ -633,11 +633,10 @@ if "Live" in page:
                   <div class="metric-sub">Confidence: {res['confidence']}%</div>
                   <hr style="margin:8px 0">
                   <div>🌡 Tmax: <b>{res['raw_obs']['temp_max']}°C</b></div>
-                  <div>🥵 Heat Index: <b>{res['heat_index']}°C</b></div>
+                  <div>🔥 Heat Index: <b>{res['heat_index']}°C</b></div>
                   <div>💧 Humidity: <b>{res['raw_obs']['humidity']}%</b></div>
                   <div>💨 AQI: <b>{res['raw_obs']['aqi']:.0f}</b></div>
                   <div>🌧 Rain: <b>{res['raw_obs']['rainfall']} mm</b></div>
-                  <div>🔥 Consec Hot Days: <b>{res['consec_hot_days']}</b></div>
                   <div style="margin-top:6px">
                     <span class="source-tag">AQI: {res.get('aqi_source','API')}</span>
                   </div>
@@ -699,31 +698,31 @@ if "Live" in page:
     # PAGE 2: HISTORICAL OVERVIEW
     # ════════════════════════════════════════════════════════════════════════
     else:
-        st.title("📅 7-Day Heatwave Forecast")
-        st.caption(
-            "Chained ML forecast using Open-Meteo 16-day weather + 5-day AQ. "
-            "Confidence decays each day forward — see reliability label.")
+        # st.title("📅 7-Day Heatwave Forecast")
+        # st.caption(
+        #     "Chained ML forecast using Open-Meteo 16-day weather + 5-day AQ. "
+        #     "Confidence decays each day forward — see reliability label.")
 
         # ── Controls ──────────────────────────────────────────────────────
         fc1, fc2, fc3 = st.columns([2, 2, 3])
         with fc1:
-            fc_cities = st.multiselect("Cities", CITIES, default=CITIES, key="fc_cities")
+            fc_cities = st.multiselect("Cities", CITIES, default=[], key="fc_cities")
         with fc2:
             n_days = st.slider("Days ahead", 1, 16, 7, key="fc_days")
         with fc3:
             st.markdown("<br>", unsafe_allow_html=True)
-            run_fc = st.button("🔮 Run Forecast", type="primary",
+            run_fc = st.button("Run Forecast", type="primary",
                                use_container_width=True, key="fc_btn")
 
         # Reliability legend
-        st.markdown(
-            "> **Reliability:** "
-            "🟦 **High** (days 1–2) &nbsp;|&nbsp; "
-            "🟨 **Medium** (days 3–4) &nbsp;|&nbsp; "
-            "🟧 **Low** (days 5–7) &nbsp;|&nbsp; "
-            "⬜ **Indicative** (days 8+)"
-        )
-        st.markdown("---")
+        # st.markdown(
+        #     "> **Reliability:** "
+        #     "🟦 **High** (days 1–2) &nbsp;|&nbsp; "
+        #     "🟨 **Medium** (days 3–4) &nbsp;|&nbsp; "
+        #     "🟧 **Low** (days 5–7) &nbsp;|&nbsp; "
+        #     "⬜ **Indicative** (days 8+)"
+        # )
+        # st.markdown("---")
 
         if run_fc:
             # ── import the forecast engine ─────────────────────────────
@@ -862,13 +861,13 @@ if "Live" in page:
 
                 # Compound event warning
                 compound_days = [d for d in fc_list if d["active_compounds"]]
-                if compound_days:
-                    st.warning(
-                        f"⚠ **{city}** — compound risk events in forecast: " +
-                        ", ".join([f"{d['date'][5:]} ({', '.join(d['active_compounds'])})"
-                                   for d in compound_days])
-                    )
-                st.markdown("---")
+                # if compound_days:
+                    # st.warning(
+                    #     f"⚠ **{city}** — compound risk events in forecast: " +
+                    #     ", ".join([f"{d['date'][5:]} ({', '.join(d['active_compounds'])})"
+                    #                for d in compound_days])
+                    # )
+                # st.markdown("---")
 
             # ── Download all forecasts ────────────────────────────────
             all_rows = []
@@ -888,29 +887,29 @@ if "Live" in page:
             st.info("👆 Click **Run Forecast** to generate predictions.")
 
 elif "Monthly" in page:
-    st.title("📆 Monthly Outlook (Seasonal Prediction)")
-    st.caption(
-        "Seasonal prediction using historical climate normals + warming trend. "
-        "Months 1–6 are reliable; months 7–12 are indicative trend only.")
+    st.title("Monthly Outlook (Seasonal Prediction)")
+    # st.caption(
+    #     "Seasonal prediction using historical climate normals + warming trend. "
+    #     "Months 1–6 are reliable; months 7–12 are indicative trend only.")
 
     sc1, sc2, sc3 = st.columns([2, 2, 3])
     with sc1:
-        s_cities  = st.multiselect("Cities", CITIES, default=CITIES, key="sc_cities")
+        s_cities  = st.multiselect("Cities", CITIES, default=[], key="sc_cities")
     with sc2:
         s_months  = st.slider("Months ahead", 1, 12, 12, key="s_months")
     with sc3:
         st.markdown("<br>", unsafe_allow_html=True)
-        s_btn = st.button("📆 Generate Monthly Outlook",
+        s_btn = st.button("Generate Monthly Outlook",
                           type="primary", use_container_width=True, key="s_btn")
 
-    st.markdown(
-        "> **Reliability:** "
-        "🟦 **High** (months 1–2) &nbsp;|&nbsp; "
-        "🟨 **Medium** (months 3–6) &nbsp;|&nbsp; "
-        "🟧 **Low** (months 7–9) &nbsp;|&nbsp; "
-        "⬜ **Indicative** (months 10–12)"
-    )
-    st.markdown("---")
+    # st.markdown(
+    #     "> **Reliability:** "
+    #     "🟦 **High** (months 1–2) &nbsp;|&nbsp; "
+    #     "🟨 **Medium** (months 3–6) &nbsp;|&nbsp; "
+    #     "🟧 **Low** (months 7–9) &nbsp;|&nbsp; "
+    #     "⬜ **Indicative** (months 10–12)"
+    # )
+    # st.markdown("---")
 
     if s_btn:
         import importlib.util, sys as _sys
@@ -1366,7 +1365,7 @@ elif "Monthly" in page:
 
 #                 heat_aqi_flag      = int(exp_t >= 38 and exp_aqi >= 200)
 elif "Compound" in page:
-    st.title("⚡ Compound Risk Intensity")
+    st.title("Compound Risk")
     st.caption(
         "Shows how humidity and AQI amplify temperature-only heatwave intensity. "
         "Same temperature — very different danger depending on what else is happening.")
@@ -1386,13 +1385,13 @@ elif "Compound" in page:
     st.markdown("---")
 
     # ── SECTION 1: LIVE CALCULATOR ────────────────────────────────────
-    st.subheader("🧮 Compound Risk Calculator")
-    st.caption("Choose how to supply the weather inputs — intensity updates instantly.")
+    st.subheader("Compound Risk Calculator")
+    # st.caption("Choose how to supply the weather inputs — intensity updates instantly.")
 
     comp_mode = st.radio(
         "**Input Mode**",
-        ["🎛️ Set Values Manually", "📅 Pick a Date from History",
-         "☀️ Today", "🌅 Tomorrow"],
+        ["Set Values Manually", "Pick a Date from History",
+         "Today", "Tomorrow"],
         horizontal=True, key="comp_mode",
     )
     st.markdown("")
@@ -1403,7 +1402,7 @@ elif "Compound" in page:
     _input_label = ""
 
     # ── Mode: Manual sliders ─────────────────────────────────────────
-    if comp_mode == "🎛️ Set Values Manually":
+    if comp_mode == "Set Values Manually":
         sl1, sl2, sl3 = st.columns(3)
         c_temp = sl1.slider("Temperature Max (°C)", 20.0, 50.0, 38.0, 0.5, key="c_temp_man")
         c_hum  = sl2.slider("Humidity (%)", 5, 100, 45, key="c_hum_man")
@@ -1411,7 +1410,7 @@ elif "Compound" in page:
         _input_label = f"Manual — Tmax {c_temp}°C | Humidity {c_hum}% | AQI {c_aqi}"
 
     # ── Mode: Pick a date from history ──────────────────────────────
-    elif comp_mode == "📅 Pick a Date from History":
+    elif comp_mode == "Pick a Date from History":
         _city_hist = load_city_history(comp_city)
         pred_date  = st.date_input("Date", value=date.today(), key="comp_date_hist")
         _obs_csv   = None
@@ -1445,7 +1444,7 @@ elif "Compound" in page:
             _input_ready = False
 
     # ── Mode: Today / Tomorrow (live API fetch) ──────────────────────
-    elif comp_mode in ("☀️ Today", "🌅 Tomorrow"):
+    elif comp_mode in ("Today", "Tomorrow"):
         _target_day   = date.today() if comp_mode == "☀️ Today" else date.today() + timedelta(days=1)
         _label_day    = "Today" if comp_mode == "☀️ Today" else "Tomorrow"
         cfg = CITY_CONFIG[comp_city]
@@ -1476,7 +1475,7 @@ elif "Compound" in page:
 
     # ── COMPUTE & DISPLAY ─────────────────────────────────────────────
     if _input_ready:
-        st.markdown(f"**Computing for:** `{_input_label}`")
+        st.markdown(f"**Computing for:** {_input_label}")
         r = _mod.compute_compound_intensity(c_temp, c_hum, c_aqi)
 
         risk_bg = {"Low":"#d5f5e3","Moderate":"#fef9e7","High":"#fdebd0","Severe":"#fadbd8"}
@@ -1606,7 +1605,7 @@ elif "Compound" in page:
             
         # ── Historical Heatmap ────────────────────────────────────────────
         st.markdown("---")
-        st.subheader(f"📅 Historical Compound Risk Seasonality — {comp_city}")
+        st.subheader(f"Historical Compound Risk Seasonality — {comp_city}")
         
         comp_path = os.path.join(PROC_DIR, "compound_intensity_all.csv")
         if os.path.exists(comp_path):
@@ -1646,7 +1645,7 @@ elif "Compound" in page:
             st.warning("Historical data not available for heatmap.")
 
 elif "Overview" in page:
-    st.title("🏠 Historical Risk Overview")
+    st.title("Historical Risk Overview")
 
     if df_all is None:
         st.error("No data found. Run steps 1–4 first.")
@@ -1880,7 +1879,7 @@ elif "Overview" in page:
 # PAGE 3: TRENDS & ANALYSIS
 # ════════════════════════════════════════════════════════════════════════
 elif "Trends" in page:
-    st.title("📈 Trends & Analysis")
+    st.title("Trends & Analysis")
     st.caption("Correlations · Anomalies · Risk behavior ")
 
     if df_all is None or len(df_all)==0:
@@ -2132,7 +2131,7 @@ elif "Trends" in page:
 # PAGE 4: MANUAL PREDICTION
 # ════════════════════════════════════════════════════════════════════════
 elif "Manual" in page:
-    st.title("🔍 Manual Prediction")
+    st.title("Manual Prediction")
     st.caption("Choose how you want to supply the weather inputs — then click Predict.")
 
     # ── City picker ───────────────────────────────────────────────────────
@@ -2143,7 +2142,7 @@ elif "Manual" in page:
     # ── Mode toggle ───────────────────────────────────────────────────────
     mode = st.radio(
         "**Input Mode**",
-        options=["📅 Pick a Date from History", "🎛️ Set Values Manually"],
+        options=["Pick a Date from History", "Set Values Manually"],
         horizontal=True,
         key="man_mode",
     )
@@ -2152,7 +2151,7 @@ elif "Manual" in page:
     # ─────────────────────────────────────────────────────────────────────
     # MODE A: DATE LOOKUP  — loads values from processed CSV for that date
     # ─────────────────────────────────────────────────────────────────────
-    if mode == "📅 Pick a Date from History":
+    if mode == "Pick a Date from History":
         st.markdown("##### Select a date — observed values are loaded automatically from the processed CSV.")
         pred_date = st.date_input("Date", value=date.today(), key="man_date_a")
 
@@ -2244,8 +2243,7 @@ elif "Manual" in page:
               <div class="metric-sub">Score: {result['composite_score']} / 100
                &nbsp;|&nbsp; Confidence: {result['confidence']}%</div>
               <hr>
-              <div>🥵 Heat Index: <b>{result['heat_index']}°C</b></div>
-              <div>🔥 Consecutive hot days: <b>{result['consec_hot_days']}</b></div>
+              <div>🔥 Heat Index: <b>{result['heat_index']}°C</b></div>
             </div>""", unsafe_allow_html=True)
 
             if result["active_compounds"]:
@@ -2277,25 +2275,25 @@ elif "Manual" in page:
                 st_c  = min(100, int(t_max>=38 and aqi_m>=200)*30 +
                                  int(t_max>=38 and aqi_m>=150)*25 +
                                  int(t_max>=38 and humidity>=60)*20)
-                fig = go.Figure(go.Scatterpolar(
-                    r=[st_t, st_h, st_a, st_ap, st_c],
-                    theta=["Temperature", "Heat Index", "AQI", "Air Pollution", "Compound"],
-                    fill="toself",
-                    fillcolor='rgba(241, 196, 15, 0.27)',
-                    line_color=rc,
-                ))
-                fig.update_layout(title="Pillar scores",
-                                  polar=dict(radialaxis=dict(range=[0, 100])),
-                                  height=250, margin=dict(l=0,r=0,t=40,b=0),
-                                  showlegend=False)
-                st.plotly_chart(fig, use_container_width=True)
+                # fig = go.Figure(go.Scatterpolar(
+                #     r=[st_t, st_h, st_a, st_ap, st_c],
+                #     theta=["Temperature", "Heat Index", "AQI", "Air Pollution", "Compound"],
+                #     fill="toself",
+                #     fillcolor='rgba(241, 196, 15, 0.27)',
+                #     line_color=rc,
+                # ))
+                # fig.update_layout(title="Pillar scores",
+                #                   polar=dict(radialaxis=dict(range=[0, 100])),
+                #                   height=250, margin=dict(l=0,r=0,t=40,b=0),
+                #                   showlegend=False)
+                # st.plotly_chart(fig, use_container_width=True)
 
 
 # ════════════════════════════════════════════════════════════════════════
 # PAGE 6: PREDICTION LOG
 # ════════════════════════════════════════════════════════════════════════
 elif "Log" in page:
-    st.title("📋 Prediction Log")
+    st.title("Prediction Log")
     st.caption("All live predictions made from the dashboard.")
 
     log_files = sorted([f for f in os.listdir(LOG_DIR) if f.endswith(".json")],
@@ -2318,8 +2316,8 @@ elif "Log" in page:
                 "Confidence" : f"{r.get('confidence',0):.1f}%",
                 "Tmax"       : r.get("raw_obs",{}).get("temp_max",""),
                 "AQI"        : r.get("raw_obs",{}).get("aqi",""),
-                "Compounds"  : ", ".join(r.get("active_compounds",[]) or ["-"]),
-                "AQI Source" : r.get("aqi_source",""),
+                # "Compounds"  : ", ".join(r.get("active_compounds",[]) or ["-"]),
+                # "AQI Source" : r.get("aqi_source",""),
             })
         except Exception:
             continue
@@ -2343,14 +2341,14 @@ elif "Log" in page:
     st.dataframe(styled, use_container_width=True, height=420)
 
     # Mini trend of logged predictions
-    if len(log_df) > 1:
-        log_df["Score_num"] = pd.to_numeric(log_df["Score"],errors="coerce")
-        fig = px.line(log_df.sort_values("Date"),x="Date",y="Score_num",
-                      color="City",color_discrete_map=CITY_COLORS,markers=True,
-                      title="Composite Score — Live Prediction History")
-        fig.add_hline(y=50,line_dash="dot",line_color="orange")
-        fig.add_hline(y=75,line_dash="dot",line_color="red")
-        st.plotly_chart(fig,use_container_width=True)
+    # if len(log_df) > 1:
+    #     log_df["Score_num"] = pd.to_numeric(log_df["Score"],errors="coerce")
+    #     fig = px.line(log_df.sort_values("Date"),x="Date",y="Score_num",
+    #                   color="City",color_discrete_map=CITY_COLORS,markers=True,
+    #                   title="Composite Score — Live Prediction History")
+    #     fig.add_hline(y=50,line_dash="dot",line_color="orange")
+    #     fig.add_hline(y=75,line_dash="dot",line_color="red")
+    #     st.plotly_chart(fig,use_container_width=True)
 
     # Download
     csv = log_df.to_csv(index=False)

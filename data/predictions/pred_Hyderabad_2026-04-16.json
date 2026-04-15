@@ -1,0 +1,29 @@
+{
+  "city": "Hyderabad",
+  "date": "2026-04-16",
+  "risk_level": 1,
+  "risk_label": "Moderate",
+  "emoji": "\ud83d\udfe1",
+  "composite_score": 45.9,
+  "confidence": 73.7,
+  "probabilities": {
+    "Low": 18.0,
+    "Moderate": 73.7,
+    "High": 8.3
+  },
+  "heat_index": 59.4,
+  "humidex": 33.8,
+  "consec_hot_days": 40,
+  "active_compounds": [],
+  "advisory": "Moderate heat. Stay hydrated. Avoid peak sun (12\u20134 PM). Monitor elderly & children.",
+  "raw_obs": {
+    "date": "2026-04-16",
+    "temp_max": 39.4,
+    "temp_min": 28.1,
+    "humidity": 59,
+    "wind": 11.9,
+    "rainfall": 0.5,
+    "aqi": 46.0
+  },
+  "aqi_source": "Open-Meteo AQ (free)"
+}
