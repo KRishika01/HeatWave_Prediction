@@ -652,79 +652,43 @@ if "Live" in page:
             tabs = st.tabs([f"{r['emoji']} {c}" for c,r in valid.items()])
             for tab, (city, res) in zip(tabs, valid.items()):
                 with tab:
-                    a1, a2 = st.columns([1,1])
-
-                    with a1:
-                        # Probability bar chart
-                        probs = res["probabilities"]
-                        fig = go.Figure(go.Bar(
-                            x=list(probs.values()),
-                            y=list(probs.keys()),
-                            orientation="h",
-                            marker_color=[RISK_COLORS[i] for i in range(4)],
-                            text=[f"{v:.1f}%" for v in probs.values()],
-                            textposition="outside",
-                        ))
-                        fig.update_layout(
-                            title="Class Probabilities",
-                            xaxis=dict(range=[0,105], title="%"),
-                            height=220, margin=dict(l=10,r=10,t=40,b=10),
-                            showlegend=False,
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
-
-                    with a2:
-                        # Pillar radar
-                        obs = res["raw_obs"]
-                        def _s(x,bps):
-                            for lo,hi,ilo,ihi in bps:
-                                if lo<=x<=hi: return round(((ihi-ilo)/(hi-lo))*(x-lo)+ilo,1)
-                            return 100.0
-                        hi_val = _heat_index(obs["temp_max"], obs["humidity"])
-                        st_t = 0 if obs["temp_max"]<35 else 25 if obs["temp_max"]<38 else 50 if obs["temp_max"]<40 else 75 if obs["temp_max"]<45 else 100
-                        st_h = _s(hi_val, [(0,27,0,0),(27,32,0,25),(32,41,25,50),(41,54,50,75),(54,100,75,100)])
-                        st_a = _s(obs["aqi"], [(0,50,0,0),(50,100,0,15),(100,200,15,40),(200,300,40,60),(300,400,60,80),(400,500,80,100)])
-                        # Heat+Air Pollution compound score (replaces drought)
-                        st_ap = min(100, int(obs["temp_max"]>=38 and obs["aqi"]>=150)*50 +
-                                         int(obs["temp_max"]>=38 and obs["aqi"]>=200)*50)
-                        st_c = min(100, (int(obs["temp_max"]>=38 and obs["aqi"]>=200)*30 +
-                                         int(obs["temp_max"]>=38 and obs["aqi"]>=150)*25 +
-                                         int(obs["temp_max"]>=38 and obs["humidity"]>=60)*20))
-                        rc   = RISK_COLORS[res["risk_level"]]
-                        fig  = go.Figure(go.Scatterpolar(
-                            r=[st_t,st_h,st_a,st_ap,st_c],
-                            theta=["Temperature","Heat Index","AQI","Air Pollution","Compound"],
-                            fill="toself",
-                            fillcolor='rgba(241, 196, 15, 0.27)',
-                            line_color=rc,
-                        ))
-                        fig.update_layout(
-                            title="Pillar Breakdown",
-                            polar=dict(radialaxis=dict(range=[0,100],tickfont_size=9)),
-                            height=220, margin=dict(l=10,r=10,t=40,b=10),
-                            showlegend=False,
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
+                    # Probability bar chart
+                    probs = res["probabilities"]
+                    fig = go.Figure(go.Bar(
+                        x=list(probs.values()),
+                        y=list(probs.keys()),
+                        orientation="h",
+                        marker_color=[RISK_COLORS[i] for i in range(4)],
+                        text=[f"{v:.1f}%" for v in probs.values()],
+                        textposition="outside",
+                    ))
+                    fig.update_layout(
+                        title="Class Probabilities",
+                        xaxis=dict(range=[0, 105], title="%"),
+                        height=250, margin=dict(l=10, r=10, t=40, b=10),
+                        showlegend=False,
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
 
                     # Advisory
-                    st.markdown(f"""<div class="advisory-box">
-                      <b>Advisory:</b> {res['advisory']}
-                    </div>""", unsafe_allow_html=True)
+                    # st.markdown(f"""<div class="advisory-box">
+                    #   <b>Advisory:</b> {res['advisory']}
+                    # </div>""", unsafe_allow_html=True)
 
                     # Compound flags
-                    if res["active_compounds"]:
-                        st.warning("⚠ Active Compound Risks: " +
-                                   " | ".join(res["active_compounds"]))
+                    # if res["active_compounds"]:
+                    #     st.warning("⚠ Active Compound Risks: " +
+                    #                " | ".join(res["active_compounds"]))
 
                     # Context from history
-                    if df_all is not None:
-                        st.markdown("**Historical context — last 14 days:**")
-                        hist14 = (df_all[df_all["city"]==city]
-                                  .tail(14)[["date","temp_max","aqi","risk_label","composite_score"]]
-                                  .copy())
-                        hist14["date"] = hist14["date"].dt.strftime("%d %b")
-                        hist14.columns = ["Date","Tmax°C","AQI","Risk","Score"]
-                        st.dataframe(hist14.set_index("Date"), use_container_width=True)
+                    # if df_all is not None:
+                    #     st.markdown("**Historical context — last 14 days:**")
+                    #     hist14 = (df_all[df_all["city"]==city]
+                    #               .tail(14)[["date","temp_max","aqi","risk_label","composite_score"]]
+                    #               .copy())
+                    #     hist14["date"] = hist14["date"].dt.strftime("%d %b")
+                    #     hist14.columns = ["Date","Tmax°C","AQI","Risk","Score"]
+                    #     st.dataframe(hist14.set_index("Date"), use_container_width=True)
 
         else:
             st.info("👆 Click **Fetch Live Data & Predict** to run today's or tomorrow's prediction.")

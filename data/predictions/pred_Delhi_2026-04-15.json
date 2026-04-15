@@ -1,30 +1,33 @@
 {
   "city": "Delhi",
   "date": "2026-04-15",
-  "risk_level": 0,
-  "risk_label": "Low",
-  "emoji": "\ud83d\udfe2",
-  "composite_score": 30.6,
-  "confidence": 98.0,
+  "risk_level": 1,
+  "risk_label": "Moderate",
+  "emoji": "\ud83d\udfe1",
+  "composite_score": 49.4,
+  "confidence": 61.7,
   "probabilities": {
-    "Low": 98.0,
-    "Moderate": 0.7,
-    "High": 1.3,
+    "Low": 32.3,
+    "Moderate": 61.7,
+    "High": 6.0,
     "Severe": 0.0
   },
-  "heat_index": 45.8,
-  "humidex": 31.6,
+  "heat_index": 49.2,
+  "humidex": 32.8,
   "consec_hot_days": 40,
-  "active_compounds": [],
-  "advisory": "No significant heat risk. Normal outdoor activities are safe.",
+  "active_compounds": [
+    "Heat + AQI (Severe)",
+    "Heat + Air Pollution"
+  ],
+  "advisory": "Moderate heat. Stay hydrated. Avoid peak sun (12\u20134 PM). Monitor elderly & children.",
   "raw_obs": {
     "date": "2026-04-15",
-    "temp_max": 37.2,
+    "temp_max": 38.4,
     "temp_min": 24.0,
     "humidity": 49,
-    "wind": 9.7,
+    "wind": 10.7,
     "rainfall": 0,
-    "aqi": 270.0
+    "aqi": 406.0
   },
   "aqi_source": "Open-Meteo AQ (free)"
 }
