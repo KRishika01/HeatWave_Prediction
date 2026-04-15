@@ -5,14 +5,14 @@
   "risk_label": "High",
   "emoji": "\ud83d\udfe0",
   "composite_score": 63.9,
-  "confidence": 96.0,
+  "confidence": 95.7,
   "probabilities": {
-    "Low": 1.7,
+    "Low": 2.0,
     "Moderate": 2.3,
-    "High": 96.0,
+    "High": 95.7,
     "Severe": 0.0
   },
-  "heat_index": 58.8,
+  "heat_index": 60.4,
   "humidex": 34.9,
   "consec_hot_days": 1,
   "active_compounds": [],
@@ -20,9 +20,9 @@
   "raw_obs": {
     "date": "2026-04-15",
     "temp_max": 40.5,
-    "temp_min": 23.7,
-    "humidity": 53,
-    "wind": 15.3,
+    "temp_min": 24.1,
+    "humidity": 55,
+    "wind": 14.1,
     "rainfall": 0,
     "aqi": 32.0
   },

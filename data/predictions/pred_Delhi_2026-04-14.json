@@ -4,27 +4,27 @@
   "risk_level": 0,
   "risk_label": "Low",
   "emoji": "\ud83d\udfe2",
-  "composite_score": 28.5,
-  "confidence": 97.7,
+  "composite_score": 28.4,
+  "confidence": 97.3,
   "probabilities": {
-    "Low": 97.7,
+    "Low": 97.3,
     "Moderate": 0.3,
-    "High": 2.0,
+    "High": 2.3,
     "Severe": 0.0
   },
-  "heat_index": 46.1,
-  "humidex": 30.6,
+  "heat_index": 47.6,
+  "humidex": 31.1,
   "consec_hot_days": 40,
   "active_compounds": [],
   "advisory": "No significant heat risk. Normal outdoor activities are safe.",
   "raw_obs": {
     "date": "2026-04-14",
-    "temp_max": 36.2,
+    "temp_max": 36.7,
     "temp_min": 22.7,
     "humidity": 55,
     "wind": 7.2,
     "rainfall": 0,
-    "aqi": 177.0
+    "aqi": 178.0
   },
   "aqi_source": "Open-Meteo AQ (free)"
 }
